@@ -7,7 +7,7 @@ services:
     restart: always
     volumes:
       # Mount the database directory to persist data
-      - electro_db:/app/database
+      - electro_db:/app/instance
       # Mount the uploads directory to persist images
       - electro_uploads:/app/static/uploads
     env_file:

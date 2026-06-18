@@ -44,7 +44,7 @@ def create_app(config_name: str = None) -> Flask:
 
     # Ensure upload folder exists
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-    os.makedirs(os.path.join(app.root_path, "database"), exist_ok=True)
+    os.makedirs(os.path.join(app.root_path, "instance"), exist_ok=True)
 
     # Extensions
     db.init_app(app)
