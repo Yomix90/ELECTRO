@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.nom(lang) }} — {{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}{% endblock %}
+
+{% block extra_head %}
+<meta name="description" content="{{ product.description(lang)[:160] }}">
+<meta property="og:title" content="{{ product.nom(lang) }}">
+<meta property="og:description" content="{{ product.description(lang)[:200] }}">
+{% if product.image_principale %}
+<meta property="og:image" content="{{ request.host_url }}uploads/{{ product.image_principale }}">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="background:var(--bg);padding:1.5rem 0 4rem;">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb" style="font-size:0.85rem;">
+        <li class="breadcrumb-item">
+          <a href="{{ url_for('index') }}" style="color:var(--primary);">
+            {% if lang == 'ar' %}الرئيسية{% else %}Accueil{% endif %}
+          </a>
+        </li>
+        {% if product.categorie %}
+        <li class="breadcrumb-item">
+          <a href="{{ url_for('category_view', slug=product.categorie.slug) }}" style="color:var(--primary);">
+            {{ product.categorie.nom(lang) }}
+          </a>
+        </li>
+        {% endif %}
+        <li class="breadcrumb-item active">{{ product.nom(lang)[:40] }}{% if product.nom(lang)|length > 40 %}…{% endif %}</li>
+      </ol>
+    </nav>
+
+    <div class="row g-4">
+
+      <!-- ══ GALLERY ══ -->
+      <div class="col-lg-5">
+        <div class="product-gallery">
+          {% set images = product.images.all() %}
+          {% if images %}
+
+          <!-- Main image -->
+          <div class="gallery-main" id="galleryMain">
+            <a href="{{ url_for('uploaded_file', filename=images[0].chemin_fichier) }}"
+               class="glightbox" data-gallery="product-gallery" data-title="{{ product.nom(lang) }}">
+              <img src="{{ url_for('uploaded_file', filename=images[0].chemin_fichier) }}"
+                   alt="{{ product.nom(lang) }}" id="mainImg">
+            </a>
+            {% for img in images[1:] %}
+            <a href="{{ url_for('uploaded_file', filename=img.chemin_fichier) }}"
+               class="glightbox d-none" data-gallery="product-gallery">
+              <img src="{{ url_for('uploaded_file', filename=img.chemin_fichier) }}" alt="">
+            </a>
+            {% endfor %}
+          </div>
+
+          <!-- Thumbnails -->
+          {% if images|length > 1 %}
+          <div class="gallery-thumbs">
+            {% for img in images %}
+            <div class="gallery-thumb {{ 'active' if loop.first }}"
+                 onclick="changeMainImage('{{ url_for('uploaded_file', filename=img.chemin_fichier) }}', this)">
+              <img src="{{ url_for('uploaded_file', filename=img.chemin_fichier) }}" alt="">
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% else %}
+          <!-- No image placeholder -->
+          <div class="gallery-main">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;color:var(--text-light);">
+              <i class="bi bi-image" style="font-size:4rem;opacity:0.3;"></i>
+              <span style="font-size:0.875rem;margin-top:0.5rem;">{% if lang == 'ar' %}لا توجد صورة{% else %}Aucune image{% endif %}</span>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ══ PRODUCT INFO ══ -->
+      <div class="col-lg-7">
+        <div class="product-detail-card">
+
+          <!-- Badges -->
+          <div class="d-flex gap-2 flex-wrap mb-2">
+            {% if product.badge %}
+            <span class="badge-electro badge-{{ product.badge }}" style="position:static;font-size:0.75rem;">
+              {{ t.get('badge_' + product.badge, product.badge) }}
+            </span>
+            {% endif %}
+            {% if product.etat == 'occasion' %}
+            <span class="status-badge status-occasion">{{ t.get('badge_occasion','Occasion') }}</span>
+            {% else %}
+            <span class="status-badge status-neuf">{{ t.get('badge_neuf','Neuf') }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Title -->
+          <h1 style="font-size:clamp(1.2rem,3vw,1.8rem);font-weight:800;margin-bottom:0.5rem;">
+            {{ product.nom(lang) }}
+          </h1>
+
+          <!-- Reference & Brand -->
+          <div class="d-flex gap-3 mb-3" style="font-size:0.85rem;color:var(--text-muted);">
+            {% if product.reference %}
+            <span><strong>{{ t.get('label_ref','Réf') }}:</strong> {{ product.reference }}</span>
+            {% endif %}
+            {% if product.marque %}
+            <span><strong>{{ t.get('label_brand','Marque') }}:</strong> {{ product.marque }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Price -->
+          <div class="mb-3 p-3" style="background:linear-gradient(135deg,rgba(26,35,126,0.05),rgba(26,35,126,0.02));border-radius:var(--radius-sm);border:1px solid var(--border);">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <span style="font-size:2rem;font-weight:900;color:var(--primary);">
+                {{ '{:,.0f}'.format(product.prix_actuel).replace(',', ' ') }}
+                <small style="font-size:1rem;">{{ settings.get('devise','DH') }}</small>
+              </span>
+              {% if product.en_promo %}
+              <div>
+                <div style="font-size:0.95rem;color:var(--text-muted);text-decoration:line-through;">
+                  {{ '{:,.0f}'.format(product.prix).replace(',', ' ') }} {{ settings.get('devise','DH') }}
+                </div>
+                {% set saving = ((product.prix - product.prix_actuel) / product.prix * 100)|int %}
+                <div class="price-saving" style="font-size:0.85rem;">
+                  {% if lang == 'ar' %}توفير {% else %}Économie {% endif %}{{ saving }}%
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Stock -->
+          <div class="mb-3">
+            {% if product.quantite_stock == 0 %}
+            <span class="badge-stock-out" style="font-size:0.9rem;">
+              <i class="bi bi-x-circle me-1"></i>{{ t.get('label_out_of_stock','Rupture de stock') }}
+            </span>
+            {% elif product.quantite_stock <= 5 %}
+            <span class="badge-stock-low" style="font-size:0.9rem;">
+              <i class="bi bi-exclamation-circle me-1"></i>
+              {% if lang == 'ar' %}مخزون محدود ({{ product.quantite_stock }} قطعة){% else %}Stock limité ({{ product.quantite_stock }} restant{{ 's' if product.quantite_stock > 1 }}){% endif %}
+            </span>
+            {% else %}
+            <span class="badge-stock-ok" style="font-size:0.9rem;">
+              <i class="bi bi-check-circle-fill me-1"></i>{{ t.get('label_in_stock','En stock') }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- WhatsApp CTA -->
+          {% if product.quantite_stock > 0 %}
+          <a href="{{ wa_url }}" target="_blank" rel="noopener"
+             class="btn-whatsapp btn-whatsapp-lg mb-3"
+             id="waBtn"
+             onclick="trackWA({{ product.id }})">
+            <i class="bi bi-whatsapp" style="font-size:1.3rem;"></i>
+            {{ t.get('btn_whatsapp','Commander via WhatsApp') }}
+          </a>
+          {% else %}
+          <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-clock-history"></i>
+            {% if lang == 'ar' %}اسألنا عن التوفر عبر واتساب{% else %}Demandez la disponibilité via WhatsApp{% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Add to group cart -->
+          <button class="btn-outline-custom w-100 mb-3 add-to-cart"
+                  data-id="{{ product.id }}"
+                  data-nom="{{ product.nom(lang) }}"
+                  data-ref="{{ product.reference }}"
+                  data-prix="{{ '{:,.0f}'.format(product.prix_actuel).replace(',', ' ') }}">
+            <i class="bi bi-cart-plus"></i>
+            {{ t.get('btn_whatsapp_group','Ajouter à la sélection') }}
+          </button>
+
+          <!-- Description -->
+          {% set desc = product.description(lang) %}
+          {% if desc %}
+          <div class="mt-3">
+            <div class="divider-gradient mb-2"></div>
+            <p style="font-size:0.95rem;line-height:1.7;color:var(--text-muted);">
+              {{ desc }}
+            </p>
+          </div>
+          {% endif %}
+
+          <!-- Specs Table -->
+          {% if specs %}
+          <div class="mt-3">
+            <h2 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">
+              <i class="bi bi-list-ul me-2" style="color:var(--primary);"></i>
+              {{ t.get('label_specs','Spécifications techniques') }}
+            </h2>
+            <table class="specs-table">
+              {% for key, val in specs.items() %}
+              {% if val %}
+              <tr>
+                <td>{{ key }}</td>
+                <td><strong>{{ val }}</strong></td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </table>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SIMILAR PRODUCTS ══ -->
+    {% if similar %}
+    <div class="mt-5">
+      <h2 class="section-title mb-4">
+        <i class="bi bi-grid me-2" style="color:var(--secondary);font-size:1rem;"></i>
+        {{ t.get('label_similar','Produits similaires') }}
+      </h2>
+      <div class="row g-3">
+        {% for p in similar %}
+        <div class="col-6 col-md-3">
+          {% set product = p %}{% include 'partials/product_card.html' %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function changeMainImage(src, thumb) {
+    document.getElementById('mainImg').src = src;
+    document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+    thumb.classList.add('active');
+    // Update lightbox main link
+    document.querySelector('#galleryMain a.glightbox').href = src;
+  }
+
+  function trackWA(productId) {
+    fetch(window.ELECTRO.trackUrl + '/' + productId, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '' }
+    });
+  }
+
+  // Init lightbox
+  const lightbox = GLightbox({ selector: '.glightbox', touchNavigation: true });
+</script>
+{% endblock %}

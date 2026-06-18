@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ t.get('page_contact_title','Contact') }} — {{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:4rem 0 3rem;color:white;text-align:center;">
+  <div class="container">
+    <div style="width:64px;height:64px;background:rgba(255,255,255,0.15);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+      <i class="bi bi-envelope-open" style="font-size:1.8rem;color:white;"></i>
+    </div>
+    <h1 style="font-weight:800;color:white;">{{ t.get('contact_title','Contactez-nous') }}</h1>
+    <p style="color:rgba(255,255,255,0.6);">
+      {% if lang=='ar' %}نحن هنا للمساعدة{% else %}Nous sommes là pour vous aider{% endif %}
+    </p>
+  </div>
+</div>
+
+<div style="padding:4rem 0;background:var(--bg);">
+  <div class="container">
+    <div class="row g-4">
+      <!-- Contact Info Cards -->
+      <div class="col-lg-4">
+        <div class="d-flex flex-column gap-3">
+
+          {% if settings.get('telephone') %}
+          <div class="contact-card">
+            <div class="contact-icon-box"><i class="bi bi-telephone-fill"></i></div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem;">{{ t.get('contact_phone','Téléphone') }}</h3>
+            <a href="tel:{{ settings['telephone'] }}" style="color:var(--primary);font-size:1.1rem;font-weight:600;">
+              {{ settings['telephone'] }}
+            </a>
+          </div>
+          {% endif %}
+
+          {% if settings.get('whatsapp_principal') %}
+          <div class="contact-card" style="border:2px solid rgba(37,211,102,0.3);">
+            <div class="contact-icon-box" style="background:linear-gradient(135deg,#25d366,#128c7e);">
+              <i class="bi bi-whatsapp"></i>
+            </div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem;">WhatsApp</h3>
+            <a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}"
+               target="_blank" class="btn-whatsapp mt-1" style="font-size:0.9rem;padding:0.5rem 1rem;">
+              <i class="bi bi-whatsapp"></i>{{ settings['whatsapp_principal'] }}
+            </a>
+          </div>
+          {% endif %}
+
+          {% if settings.get('email') %}
+          <div class="contact-card">
+            <div class="contact-icon-box" style="background:linear-gradient(135deg,#1565c0,#42a5f5);">
+              <i class="bi bi-envelope-fill"></i>
+            </div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem;">{{ t.get('contact_email','E-mail') }}</h3>
+            <a href="mailto:{{ settings['email'] }}" style="color:var(--primary);">{{ settings['email'] }}</a>
+          </div>
+          {% endif %}
+
+          {% if settings.get('adresse_fr') %}
+          <div class="contact-card">
+            <div class="contact-icon-box" style="background:linear-gradient(135deg,#e53935,#ff7043);">
+              <i class="bi bi-geo-alt-fill"></i>
+            </div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem;">{{ t.get('contact_address','Adresse') }}</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin:0;">
+              {{ settings.get('adresse_ar' if lang=='ar' else 'adresse_fr','') }}
+            </p>
+          </div>
+          {% endif %}
+
+          {% if settings.get('horaires_fr') %}
+          <div class="contact-card">
+            <div class="contact-icon-box" style="background:linear-gradient(135deg,#f57c00,#ffa726);">
+              <i class="bi bi-clock-fill"></i>
+            </div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem;">{{ t.get('contact_hours','Horaires') }}</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin:0;">
+              {{ settings.get('horaires_ar' if lang=='ar' else 'horaires_fr','') }}
+            </p>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- Map & Social -->
+      <div class="col-lg-8">
+        <!-- Google Maps -->
+        {% if settings.get('google_maps_embed') %}
+        <div style="border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-bottom:1.5rem;">
+          {{ settings['google_maps_embed'] | safe }}
+        </div>
+        {% else %}
+        <div style="background:var(--bg-card);border-radius:var(--radius);padding:3rem;text-align:center;border:1px solid var(--border);margin-bottom:1.5rem;">
+          <i class="bi bi-map" style="font-size:3rem;color:var(--text-light);"></i>
+          <p class="text-muted mt-2" style="font-size:0.875rem;">
+            {% if lang=='ar' %}يمكن إضافة خريطة Google Maps من لوحة الإدارة{% else %}Carte Google Maps configurable depuis l'admin{% endif %}
+          </p>
+        </div>
+        {% endif %}
+
+        <!-- Social Media -->
+        <div style="background:var(--bg-card);border-radius:var(--radius);padding:1.5rem;border:1px solid var(--border);">
+          <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">{{ t.get('footer_follow_us','Suivez-nous') }}</h2>
+          <div class="d-flex gap-3 flex-wrap">
+            {% if settings.get('facebook') %}
+            <a href="{{ settings['facebook'] }}" target="_blank"
+               style="display:flex;align-items:center;gap:0.6rem;background:#1877f2;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;transition:opacity 0.2s;"
+               onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+              <i class="bi bi-facebook"></i> Facebook
+            </a>
+            {% endif %}
+            {% if settings.get('instagram') %}
+            <a href="{{ settings['instagram'] }}" target="_blank"
+               style="display:flex;align-items:center;gap:0.6rem;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;transition:opacity 0.2s;"
+               onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+              <i class="bi bi-instagram"></i> Instagram
+            </a>
+            {% endif %}
+            {% if settings.get('whatsapp_principal') %}
+            <a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}" target="_blank"
+               class="btn-whatsapp" style="padding:0.6rem 1.2rem;font-size:0.9rem;">
+              <i class="bi bi-whatsapp"></i> WhatsApp
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

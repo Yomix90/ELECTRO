@@ -1,0 +1,339 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Modifier' if product else 'Nouveau' }} Produit — Admin{% endblock %}
+{% block header_title %}
+  <i class="bi bi-{{ 'pencil' if product else 'plus-circle' }} me-2"></i>
+  {{ 'Modifier : ' + product.nom_fr[:30] if product else 'Nouveau produit' }}
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="productForm"
+      action="{{ url_for('admin_product_edit', product_id=product.id) if product else url_for('admin_product_new') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="row g-3">
+
+    <!-- ── LEFT COLUMN ── -->
+    <div class="col-lg-8">
+
+      <!-- Onglets -->
+      <div class="admin-card mb-3">
+        <ul class="nav admin-tabs border-bottom px-3" id="productTabs">
+          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-general">Général</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-media">Médias</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-specs">Spécifications</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-price">Prix & Stock</a></li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- ── Général ── -->
+          <div class="tab-pane fade show active" id="tab-general">
+            <div class="admin-card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="admin-form-label form-required">Nom (Français)</label>
+                  <input type="text" name="nom_fr" class="form-control"
+                         value="{{ product.nom_fr if product else '' }}" required
+                         placeholder="Ex: Laptop Dell Inspiron 15">
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">الاسم (العربية)</label>
+                  <input type="text" name="nom_ar" class="form-control" dir="rtl"
+                         value="{{ product.nom_ar if product else '' }}"
+                         placeholder="مثال: لابتوب ديل إنسبيرون 15"
+                         style="font-family:'Cairo',sans-serif;">
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">Description (FR)</label>
+                  <textarea name="description_fr" class="form-control" rows="4"
+                            placeholder="Description détaillée en français...">{{ product.description_fr if product else '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">الوصف (AR)</label>
+                  <textarea name="description_ar" class="form-control" rows="4" dir="rtl"
+                            placeholder="وصف تفصيلي بالعربية..."
+                            style="font-family:'Cairo',sans-serif;">{{ product.description_ar if product else '' }}</textarea>
+                </div>
+                <div class="col-md-4">
+                  <label class="admin-form-label form-required">Référence</label>
+                  <input type="text" name="reference" class="form-control"
+                         value="{{ product.reference if product else '' }}" required
+                         placeholder="Ex: LAP-DELL-001">
+                </div>
+                <div class="col-md-4">
+                  <label class="admin-form-label">Marque</label>
+                  <input type="text" name="marque" class="form-control"
+                         value="{{ product.marque if product else '' }}" placeholder="Dell, HP, Samsung...">
+                </div>
+                <div class="col-md-4">
+                  <label class="admin-form-label">Catégorie</label>
+                  <select name="categorie_id" class="form-select">
+                    <option value="">— Aucune catégorie —</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}"
+                      {{ 'selected' if product and product.categorie_id == cat.id }}>
+                      {{ cat.nom_fr }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Médias ── -->
+          <div class="tab-pane fade" id="tab-media">
+            <div class="admin-card-body">
+              {% if product %}
+              <!-- Existing images -->
+              {% set existing_images = product.images.all() %}
+              {% if existing_images %}
+              <div class="mb-3">
+                <label class="admin-form-label">Images actuelles</label>
+                <div class="upload-previews">
+                  {% for img in existing_images %}
+                  <div class="upload-preview" id="img-{{ img.id }}">
+                    <img src="{{ url_for('uploaded_file', filename=img.chemin_fichier) }}" alt="">
+                    <button type="button" class="btn-remove-img"
+                            onclick="deleteImage({{ img.id }}, {{ product.id }})">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              {% endif %}
+
+              <!-- Upload zone -->
+              <label class="admin-form-label">Ajouter des images (jpg, png, webp — max 5 Mo chacune)</label>
+              <div class="upload-zone" id="uploadZone" onclick="document.getElementById('imageInput').click()">
+                <i class="bi bi-cloud-upload"></i>
+                <p>Cliquez ou glissez des images ici</p>
+                <small style="color:var(--admin-text-muted);">JPG, PNG, WebP · Max 5 Mo · Converties en WebP automatiquement</small>
+              </div>
+              <input type="file" name="images[]" id="imageInput" multiple accept="image/*" class="d-none"
+                     onchange="previewImages(this)">
+              <div class="upload-previews" id="newPreviews"></div>
+            </div>
+          </div>
+
+          <!-- ── Specs ── -->
+          <div class="tab-pane fade" id="tab-specs">
+            <div class="admin-card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="admin-form-label mb-0">Spécifications techniques (clé : valeur)</label>
+                <button type="button" class="btn-admin-primary btn-sm" onclick="addSpec()" style="font-size:0.8rem;padding:4px 12px;">
+                  <i class="bi bi-plus"></i> Ajouter
+                </button>
+              </div>
+              <div id="specsContainer">
+                {% if product %}
+                  {% for key, val in product.get_specs_dict().items() %}
+                  <div class="spec-row">
+                    <input type="text" name="spec_key[]" class="form-control form-control-sm" value="{{ key }}" placeholder="Ex: CPU">
+                    <input type="text" name="spec_val[]" class="form-control form-control-sm" value="{{ val }}" placeholder="Ex: Intel Core i5">
+                    <button type="button" class="btn-remove-spec" onclick="this.parentElement.remove()">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  {% for key, placeholder in [('CPU','Intel Core i5-1235U'),('RAM','8 Go DDR4'),('Stockage','512 Go SSD'),('Écran','15.6\" Full HD'),('OS','Windows 11'),('Garantie','1 an')] %}
+                  <div class="spec-row">
+                    <input type="text" name="spec_key[]" class="form-control form-control-sm" value="{{ key }}" placeholder="Propriété">
+                    <input type="text" name="spec_val[]" class="form-control form-control-sm" placeholder="{{ placeholder }}">
+                    <button type="button" class="btn-remove-spec" onclick="this.parentElement.remove()">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                  {% endfor %}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Prix & Stock ── -->
+          <div class="tab-pane fade" id="tab-price">
+            <div class="admin-card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="admin-form-label form-required">Prix normal (DH)</label>
+                  <div class="input-group">
+                    <input type="number" name="prix" class="form-control" step="0.01" min="0"
+                           value="{{ product.prix if product else '' }}" required placeholder="0.00">
+                    <span class="input-group-text">DH</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">Prix promotionnel (DH)</label>
+                  <div class="input-group">
+                    <input type="number" name="prix_promo" class="form-control" step="0.01" min="0"
+                           value="{{ product.prix_promo if product and product.prix_promo else '' }}"
+                           placeholder="Laisser vide si pas de promo">
+                    <span class="input-group-text">DH</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">Début promotion</label>
+                  <input type="date" name="promo_debut" class="form-control"
+                         value="{{ product.promo_debut.strftime('%Y-%m-%d') if product and product.promo_debut else '' }}">
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">Fin promotion</label>
+                  <input type="date" name="promo_fin" class="form-control"
+                         value="{{ product.promo_fin.strftime('%Y-%m-%d') if product and product.promo_fin else '' }}">
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label form-required">Quantité en stock</label>
+                  <input type="number" name="quantite_stock" class="form-control" min="0"
+                         value="{{ product.quantite_stock if product else 0 }}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">État du produit</label>
+                  <select name="etat" class="form-select">
+                    <option value="neuf" {{ 'selected' if not product or product.etat=='neuf' }}>Neuf</option>
+                    <option value="occasion" {{ 'selected' if product and product.etat=='occasion' }}>Occasion</option>
+                    <option value="reconditionne" {{ 'selected' if product and product.etat=='reconditionne' }}>Reconditionné</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT COLUMN ── -->
+    <div class="col-lg-4">
+      <!-- Publish Box -->
+      <div class="admin-card mb-3">
+        <div class="admin-card-header"><h5><i class="bi bi-toggle-on me-2"></i>Publication</h5></div>
+        <div class="admin-card-body">
+          <div class="mb-3">
+            <label class="admin-form-label">Statut</label>
+            <select name="statut" class="form-select">
+              <option value="visible" {{ 'selected' if not product or product.statut=='visible' }}>
+                ✅ Visible (publié)
+              </option>
+              <option value="masque" {{ 'selected' if product and product.statut=='masque' }}>
+                🙈 Masqué
+              </option>
+              <option value="brouillon" {{ 'selected' if product and product.statut=='brouillon' }}>
+                📝 Brouillon
+              </option>
+            </select>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="en_vedette" value="1" id="enVedette"
+                   {{ 'checked' if product and product.en_vedette }}>
+            <label class="form-check-label" for="enVedette">
+              <i class="bi bi-star-fill me-1" style="color:#ffc107;"></i>
+              Produit vedette (affiché en haut)
+            </label>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-admin-primary flex-grow-1">
+              <i class="bi bi-check-circle"></i>
+              {{ 'Mettre à jour' if product else 'Créer le produit' }}
+            </button>
+            <a href="{{ url_for('admin_products') }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-x"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product info if editing -->
+      {% if product %}
+      <div class="admin-card">
+        <div class="admin-card-header"><h5><i class="bi bi-info-circle me-2"></i>Informations</h5></div>
+        <div class="admin-card-body" style="font-size:0.85rem;">
+          <div class="d-flex justify-content-between py-1">
+            <span style="color:var(--admin-text-muted);">Créé le</span>
+            <span>{{ product.date_creation.strftime('%d/%m/%Y') }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1">
+            <span style="color:var(--admin-text-muted);">Modifié</span>
+            <span>{{ product.date_modification.strftime('%d/%m/%Y %H:%M') }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1">
+            <span style="color:var(--admin-text-muted);">Vues</span>
+            <span>{{ product.nb_vues }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1">
+            <span style="color:var(--admin-text-muted);">Clics WA</span>
+            <span style="color:#25d366;font-weight:600;">{{ product.nb_clics_whatsapp }}</span>
+          </div>
+          <div class="mt-2 pt-2 border-top">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" target="_blank"
+               class="btn-sm-icon btn-view w-100" style="width:100%;justify-content:center;padding:0.4rem;">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Voir sur la boutique
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function addSpec() {
+    const container = document.getElementById('specsContainer');
+    const row = document.createElement('div');
+    row.className = 'spec-row';
+    row.innerHTML = `
+      <input type="text" name="spec_key[]" class="form-control form-control-sm" placeholder="Propriété (ex: RAM)">
+      <input type="text" name="spec_val[]" class="form-control form-control-sm" placeholder="Valeur (ex: 8 Go)">
+      <button type="button" class="btn-remove-spec" onclick="this.parentElement.remove()">
+        <i class="bi bi-x"></i>
+      </button>`;
+    container.appendChild(row);
+    row.querySelector('input').focus();
+  }
+
+  function previewImages(input) {
+    const preview = document.getElementById('newPreviews');
+    preview.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const div = document.createElement('div');
+        div.className = 'upload-preview';
+        div.innerHTML = `<img src="${e.target.result}" alt="${file.name}">`;
+        preview.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Drag & Drop
+  const zone = document.getElementById('uploadZone');
+  if (zone) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const input = document.getElementById('imageInput');
+      input.files = e.dataTransfer.files;
+      previewImages(input);
+    });
+  }
+
+  async function deleteImage(imgId, productId) {
+    if (!confirm('Supprimer cette image ?')) return;
+    const resp = await fetch(`/admin/produits/${productId}/images/delete/${imgId}`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById(`img-${imgId}`)?.remove();
+    }
+  }
+</script>
+{% endblock %}

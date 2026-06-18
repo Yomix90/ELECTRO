@@ -1,0 +1,89 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Journal d'activité — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-journal-text me-2"></i>Journal d'activité{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+  <div class="admin-card-header">
+    <h5>{{ logs.total }} entrée(s) au total</h5>
+    <small style="color:var(--admin-text-muted);">Page {{ logs.page }} / {{ logs.pages }}</small>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Date & Heure</th>
+          <th>Utilisateur</th>
+          <th>Action</th>
+          <th>Détails</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs.items %}
+        <tr>
+          <td style="white-space:nowrap;font-size:0.82rem;color:var(--admin-text-muted);">
+            {{ log.date_heure.strftime('%d/%m/%Y %H:%M:%S') }}
+          </td>
+          <td>
+            {% if log.admin %}
+            <div class="d-flex align-items-center gap-1">
+              <div class="user-avatar" style="width:24px;height:24px;font-size:0.7rem;flex-shrink:0;">
+                {{ log.admin.username[0].upper() }}
+              </div>
+              <span style="font-size:0.85rem;font-weight:600;">{{ log.admin.username }}</span>
+            </div>
+            {% else %}
+            <span class="text-muted" style="font-size:0.82rem;">Système</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set action_colors = {
+              'login': '#25d366', 'logout': '#9e9e9e',
+              'create_product': '#1565c0', 'edit_product': '#f57c00',
+              'delete_product': '#c62828', 'duplicate_product': '#6a1b9a',
+              'create_category': '#1565c0', 'edit_category': '#f57c00',
+              'delete_category': '#c62828', 'update_settings': '#00695c',
+              'create_user': '#1565c0', 'delete_user': '#c62828',
+              'import_excel': '#2e7d32', 'delete_image': '#bf360c',
+            } %}
+            {% set color = action_colors.get(log.action, '#546e7a') %}
+            <span style="background:{{ color }}18;color:{{ color }};padding:2px 8px;border-radius:20px;font-size:0.75rem;font-weight:700;white-space:nowrap;">
+              {{ log.action.replace('_', ' ').title() }}
+            </span>
+          </td>
+          <td style="font-size:0.83rem;color:var(--admin-text-muted);max-width:300px;">
+            {{ log.details[:80] if log.details else '—' }}{% if log.details and log.details|length > 80 %}…{% endif %}
+          </td>
+          <td style="font-size:0.78rem;color:var(--admin-text-muted);white-space:nowrap;">
+            <code>{{ log.ip_address or '—' }}</code>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if logs.pages > 1 %}
+  <div class="p-3 border-top">
+    <nav><ul class="pagination pagination-sm justify-content-center mb-0">
+      {% if logs.has_prev %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_logs', page=logs.prev_num) }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for pn in logs.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+        {% if pn %}
+        <li class="page-item {{ 'active' if pn == logs.page }}">
+          <a class="page-link" href="{{ url_for('admin_logs', page=pn) }}">{{ pn }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if logs.has_next %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_logs', page=logs.next_num) }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

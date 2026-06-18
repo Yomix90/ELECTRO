@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.flaskenv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+instance/
+database/*.db
+static/uploads/products/*
+!static/uploads/products/thumbs/
+static/uploads/products/thumbs/*

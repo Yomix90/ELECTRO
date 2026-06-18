@@ -1,0 +1,248 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Produits — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-box-seam me-2"></i>Gestion des produits{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="admin-card mb-3">
+  <div class="admin-card-body">
+    <div class="d-flex gap-2 flex-wrap justify-content-between align-items-center">
+      <!-- Search form -->
+      <form class="d-flex gap-2 flex-wrap align-items-center" method="get">
+        <div class="input-group" style="max-width:260px;">
+          <input type="text" name="q" class="form-control form-control-sm" placeholder="Nom, référence, marque..."
+                 value="{{ search }}">
+          <button class="btn btn-sm" type="submit" style="background:var(--admin-primary);color:white;">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+        <select name="cat" class="form-select form-select-sm" style="max-width:160px;" onchange="this.form.submit()">
+          <option value="">Toutes catégories</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}" {{ 'selected' if current_cat == cat.id }}>{{ cat.nom_fr }}</option>
+          {% endfor %}
+        </select>
+        <select name="statut" class="form-select form-select-sm" style="max-width:130px;" onchange="this.form.submit()">
+          <option value="">Tous statuts</option>
+          <option value="visible" {{ 'selected' if current_status=='visible' }}>Visible</option>
+          <option value="masque" {{ 'selected' if current_status=='masque' }}>Masqué</option>
+          <option value="brouillon" {{ 'selected' if current_status=='brouillon' }}>Brouillon</option>
+        </select>
+        <select name="etat" class="form-select form-select-sm" style="max-width:120px;" onchange="this.form.submit()">
+          <option value="">Tous états</option>
+          <option value="neuf" {{ 'selected' if current_etat=='neuf' }}>Neuf</option>
+          <option value="occasion" {{ 'selected' if current_etat=='occasion' }}>Occasion</option>
+        </select>
+        {% if search or current_cat or current_status or current_etat %}
+        <a href="{{ url_for('admin_products') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x me-1"></i>Effacer
+        </a>
+        {% endif %}
+      </form>
+
+      <div class="d-flex gap-2">
+        <!-- Import Excel -->
+        <form method="post" action="{{ url_for('admin_import_excel') }}" enctype="multipart/form-data" id="importForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="file" name="excel_file" id="excelImport" accept=".xlsx,.xls" class="d-none"
+                 onchange="document.getElementById('importForm').submit()">
+          <button type="button" class="btn-admin-success btn-sm" onclick="document.getElementById('excelImport').click()">
+            <i class="bi bi-upload"></i> Importer
+          </button>
+        </form>
+        <a href="{{ url_for('admin_export_excel') }}" class="btn-admin-success btn-sm">
+          <i class="bi bi-download"></i> Exporter
+        </a>
+        <a href="{{ url_for('admin_product_new') }}" class="btn-admin-primary">
+          <i class="bi bi-plus-circle"></i> Nouveau produit
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Products Table -->
+<div class="admin-card">
+  <div class="admin-card-header">
+    <h5>{{ products.total }} produit(s)</h5>
+    <small style="color:var(--admin-text-muted);">Page {{ products.page }} / {{ products.pages }}</small>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width:60px;">Image</th>
+          <th>Produit</th>
+          <th>Catégorie</th>
+          <th>Prix</th>
+          <th>Stock</th>
+          <th>État</th>
+          <th>Statut</th>
+          <th>Vues / WA</th>
+          <th style="width:130px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products.items %}
+        <tr class="{{ 'stock-danger-row' if p.quantite_stock == 0 else 'stock-alert-row' if p.quantite_stock <= 5 and p.quantite_stock > 0 }}">
+          <!-- Thumbnail -->
+          <td>
+            {% if p.image_principale %}
+            <img src="{{ url_for('uploaded_file', filename=p.image_principale) }}"
+                 style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--admin-border);">
+            {% else %}
+            <div style="width:48px;height:48px;background:var(--admin-content-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;border:1px solid var(--admin-border);">
+              <i class="bi bi-image" style="color:var(--admin-text-muted);"></i>
+            </div>
+            {% endif %}
+          </td>
+
+          <!-- Name & Ref -->
+          <td>
+            <div style="font-weight:600;font-size:0.875rem;">{{ p.nom_fr[:35] }}{% if p.nom_fr|length>35 %}…{% endif %}</div>
+            <div style="font-size:0.75rem;color:var(--admin-text-muted);">{{ p.reference }}</div>
+            {% if p.marque %}<div style="font-size:0.72rem;color:var(--admin-text-muted);">{{ p.marque }}</div>{% endif %}
+          </td>
+
+          <!-- Category -->
+          <td style="font-size:0.85rem;">{{ p.categorie.nom_fr if p.categorie else '—' }}</td>
+
+          <!-- Price -->
+          <td>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--admin-primary);">
+              {{ '{:,.0f}'.format(p.prix).replace(',', ' ') }} DH
+            </div>
+            {% if p.prix_promo %}
+            <div style="font-size:0.75rem;color:#e53935;">
+              Promo: {{ '{:,.0f}'.format(p.prix_promo).replace(',', ' ') }} DH
+            </div>
+            {% endif %}
+          </td>
+
+          <!-- Stock inline edit -->
+          <td>
+            <input type="number" class="inline-stock-input"
+                   value="{{ p.quantite_stock }}" min="0"
+                   data-product-id="{{ p.id }}"
+                   onchange="updateStock(this)"
+                   style="color:{{ '#f44336' if p.quantite_stock == 0 else '#ff9800' if p.quantite_stock <= 5 else 'inherit' }}">
+          </td>
+
+          <!-- État -->
+          <td>
+            <span class="status-badge status-{{ p.etat }}">
+              {{ p.etat.title() }}
+            </span>
+          </td>
+
+          <!-- Statut toggle -->
+          <td>
+            <button class="status-badge status-{{ p.statut }}"
+                    style="border:none;cursor:pointer;"
+                    onclick="toggleStatus({{ p.id }}, this)"
+                    title="Cliquer pour changer">
+              {% if p.statut == 'visible' %}<i class="bi bi-eye me-1"></i>{% elif p.statut == 'masque' %}<i class="bi bi-eye-slash me-1"></i>{% else %}<i class="bi bi-pencil me-1"></i>{% endif %}
+              {{ p.statut.title() }}
+            </button>
+          </td>
+
+          <!-- Stats -->
+          <td>
+            <div style="font-size:0.8rem;">
+              <i class="bi bi-eye" style="color:var(--admin-text-muted);"></i> {{ p.nb_vues }}
+            </div>
+            <div style="font-size:0.8rem;color:#25d366;">
+              <i class="bi bi-whatsapp"></i> {{ p.nb_clics_whatsapp }}
+            </div>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ url_for('product_detail', product_id=p.id) }}" target="_blank"
+                 class="btn-sm-icon btn-view" title="Voir sur la boutique"><i class="bi bi-eye"></i></a>
+              <a href="{{ url_for('admin_product_edit', product_id=p.id) }}"
+                 class="btn-sm-icon btn-edit" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <form method="post" action="{{ url_for('admin_product_duplicate', product_id=p.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm-icon btn-dup" title="Dupliquer">
+                  <i class="bi bi-copy"></i>
+                </button>
+              </form>
+              <form method="post" action="{{ url_for('admin_product_delete', product_id=p.id) }}" style="display:inline;"
+                    onsubmit="return confirm('Supprimer « {{ p.nom_fr[:30] }} » ? Cette action est irréversible.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm-icon btn-delete" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if products.pages > 1 %}
+  <div class="p-3 border-top">
+    <nav><ul class="pagination pagination-sm justify-content-center mb-0">
+      {% if products.has_prev %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_products', page=products.prev_num, q=search, cat=current_cat, statut=current_status, etat=current_etat) }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for pn in products.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=2) %}
+        {% if pn %}
+        <li class="page-item {{ 'active' if pn == products.page }}">
+          <a class="page-link" href="{{ url_for('admin_products', page=pn, q=search, cat=current_cat, statut=current_status, etat=current_etat) }}">{{ pn }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if products.has_next %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_products', page=products.next_num, q=search, cat=current_cat, statut=current_status, etat=current_etat) }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function updateStock(input) {
+  const productId = input.dataset.productId;
+  const qty = parseInt(input.value) || 0;
+  try {
+    const resp = await fetch('{{ url_for("admin_update_stock_inline") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+      body: JSON.stringify({ id: productId, qty: qty })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      input.style.color = qty === 0 ? '#f44336' : qty <= 5 ? '#ff9800' : 'inherit';
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function toggleStatus(productId, btn) {
+  try {
+    const resp = await fetch(`/admin/produits/${productId}/toggle`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+    });
+    const data = await resp.json();
+    if (data.status) {
+      const icons = { visible: 'bi-eye', masque: 'bi-eye-slash', brouillon: 'bi-pencil' };
+      const labels = { visible: 'Visible', masque: 'Masqué', brouillon: 'Brouillon' };
+      btn.className = `status-badge status-${data.status}`;
+      btn.style.border = 'none';
+      btn.style.cursor = 'pointer';
+      btn.innerHTML = `<i class="bi ${icons[data.status] || 'bi-circle'} me-1"></i>${labels[data.status] || data.status}`;
+    }
+  } catch(e) { console.error(e); }
+}
+</script>
+{% endblock %}

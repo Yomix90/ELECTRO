@@ -1,0 +1,194 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Utilisateurs — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-people me-2"></i>Gestion des utilisateurs{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+  <!-- Create form -->
+  <div class="col-lg-4">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-person-plus me-2" style="color:var(--admin-primary);"></i>Nouvel administrateur</h5>
+      </div>
+      <div class="admin-card-body">
+        <form method="post" action="{{ url_for('admin_users') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="create">
+          <div class="mb-3">
+            <label class="admin-form-label form-required">Nom d'utilisateur</label>
+            <input type="text" name="username" class="form-control" required placeholder="utilisateur123"
+                   pattern="[a-zA-Z0-9_-]{3,}" title="Min. 3 caractères, lettres/chiffres/_-">
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">E-mail</label>
+            <input type="email" name="email" class="form-control" placeholder="admin@boutique.ma">
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label form-required">Mot de passe</label>
+            <input type="password" name="password" class="form-control" required
+                   minlength="6" placeholder="Min. 6 caractères">
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">Rôle</label>
+            <select name="role" class="form-select">
+              <option value="manager">Gestionnaire produits</option>
+              <option value="readonly">Lecture seule</option>
+              {% if current_user.is_superadmin %}
+              <option value="superadmin">Super Administrateur</option>
+              {% endif %}
+            </select>
+            <small class="text-muted" style="font-size:0.75rem;">
+              <strong>Manager :</strong> CRUD produits/catégories · <strong>Lecture seule :</strong> consulter uniquement
+            </small>
+          </div>
+          <button type="submit" class="btn-admin-primary w-100">
+            <i class="bi bi-person-plus"></i> Créer le compte
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users List -->
+  <div class="col-lg-8">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5>{{ admins|length }} compte(s)</h5>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Rôle</th>
+              <th>Créé le</th>
+              <th>Dernière connexion</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for admin in admins %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="user-avatar" style="width:34px;height:34px;font-size:0.9rem;flex-shrink:0;">
+                    {{ admin.username[0].upper() }}
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:0.875rem;">
+                      {{ admin.username }}
+                      {% if admin.id == current_user.id %}
+                      <span class="tag" style="font-size:0.65rem;margin-left:4px;">Moi</span>
+                      {% endif %}
+                    </div>
+                    {% if admin.email %}
+                    <div style="font-size:0.75rem;color:var(--admin-text-muted);">{{ admin.email }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge role-{{ admin.role }}">
+                  {% if admin.role == 'superadmin' %}<i class="bi bi-shield-fill me-1"></i>Super Admin
+                  {% elif admin.role == 'manager' %}<i class="bi bi-pencil me-1"></i>Manager
+                  {% else %}<i class="bi bi-eye me-1"></i>Lecture seule
+                  {% endif %}
+                </span>
+              </td>
+              <td style="font-size:0.85rem;">{{ admin.date_creation.strftime('%d/%m/%Y') }}</td>
+              <td style="font-size:0.85rem;color:var(--admin-text-muted);">
+                {% if admin.derniere_connexion %}
+                {{ admin.derniere_connexion.strftime('%d/%m %H:%M') }}
+                {% else %}<span class="text-muted">Jamais</span>{% endif %}
+              </td>
+              <td>
+                {% if admin.actif %}
+                <span class="status-badge status-visible"><i class="bi bi-check me-1"></i>Actif</span>
+                {% else %}
+                <span class="status-badge status-masque"><i class="bi bi-x me-1"></i>Inactif</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <!-- Change Password -->
+                  <button type="button" class="btn-sm-icon btn-edit" title="Changer mot de passe"
+                          onclick="openPwdModal({{ admin.id }}, '{{ admin.username }}')">
+                    <i class="bi bi-key"></i>
+                  </button>
+
+                  {% if admin.id != current_user.id %}
+                  <!-- Toggle Active -->
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="toggle">
+                    <input type="hidden" name="user_id" value="{{ admin.id }}">
+                    <button type="submit" class="btn-sm-icon {{ 'btn-view' if admin.actif else 'btn-edit' }}"
+                            title="{{ 'Désactiver' if admin.actif else 'Activer' }}">
+                      <i class="bi bi-{{ 'pause' if admin.actif else 'play' }}"></i>
+                    </button>
+                  </form>
+                  <!-- Delete -->
+                  <form method="post" style="display:inline;"
+                        onsubmit="return confirm('Supprimer {{ admin.username }} ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="user_id" value="{{ admin.id }}">
+                    <button type="submit" class="btn-sm-icon btn-delete" title="Supprimer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="pwdModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-key me-2"></i>Changer le mot de passe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('admin_users') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="change_password">
+        <input type="hidden" name="user_id" id="pwdUserId">
+        <div class="modal-body">
+          <p class="text-muted mb-3" style="font-size:0.85rem;">
+            Utilisateur : <strong id="pwdUsername"></strong>
+          </p>
+          <label class="admin-form-label">Nouveau mot de passe</label>
+          <input type="password" name="new_password" class="form-control" required minlength="6"
+                 placeholder="Min. 6 caractères">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn-admin-primary btn-sm">
+            <i class="bi bi-check me-1"></i>Modifier
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openPwdModal(userId, username) {
+    document.getElementById('pwdUserId').value = userId;
+    document.getElementById('pwdUsername').textContent = username;
+    new bootstrap.Modal(document.getElementById('pwdModal')).show();
+  }
+</script>
+{% endblock %}

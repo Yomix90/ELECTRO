@@ -1,0 +1,256 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Paramètres — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-gear me-2"></i>Configuration du site{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" action="{{ url_for('admin_settings') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <!-- ── Boutique ── -->
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <i class="bi bi-shop" style="color:var(--admin-primary);"></i> Informations boutique
+        </div>
+        <div class="settings-section-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="admin-form-label">Nom de la boutique</label>
+              <input type="text" name="nom_boutique" class="form-control"
+                     value="{{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">Logo</label>
+              <div class="d-flex gap-2 align-items-center">
+                {% if settings.get('logo') %}
+                <img src="{{ url_for('uploaded_file', filename=settings['logo']) }}"
+                     style="height:40px;border-radius:6px;border:1px solid var(--admin-border);">
+                {% endif %}
+                <input type="file" name="logo" class="form-control form-control-sm" accept="image/*">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">Slogan (Français)</label>
+              <input type="text" name="slogan_fr" class="form-control"
+                     value="{{ settings.get('slogan_fr','') }}"
+                     placeholder="Votre spécialiste en informatique">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">الشعار (العربية)</label>
+              <input type="text" name="slogan_ar" class="form-control" dir="rtl"
+                     style="font-family:'Cairo',sans-serif;"
+                     value="{{ settings.get('slogan_ar','') }}"
+                     placeholder="متخصصون في الحلول التقنية">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Contact ── -->
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <i class="bi bi-telephone" style="color:var(--admin-primary);"></i> Coordonnées & Contact
+        </div>
+        <div class="settings-section-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="admin-form-label">WhatsApp principal</label>
+              <div class="input-group">
+                <span class="input-group-text" style="color:#25d366;"><i class="bi bi-whatsapp"></i></span>
+                <input type="text" name="whatsapp_principal" class="form-control"
+                       value="{{ settings.get('whatsapp_principal','') }}"
+                       placeholder="+212600000000">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">WhatsApp secondaire</label>
+              <div class="input-group">
+                <span class="input-group-text" style="color:#25d366;"><i class="bi bi-whatsapp"></i></span>
+                <input type="text" name="whatsapp_secondaire" class="form-control"
+                       value="{{ settings.get('whatsapp_secondaire','') }}" placeholder="+212600000001">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">Téléphone</label>
+              <input type="text" name="telephone" class="form-control"
+                     value="{{ settings.get('telephone','') }}" placeholder="+212522000000">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">E-mail</label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ settings.get('email','') }}" placeholder="contact@boutique.ma">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">Adresse (Français)</label>
+              <input type="text" name="adresse_fr" class="form-control"
+                     value="{{ settings.get('adresse_fr','') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">العنوان (AR)</label>
+              <input type="text" name="adresse_ar" class="form-control" dir="rtl"
+                     style="font-family:'Cairo',sans-serif;"
+                     value="{{ settings.get('adresse_ar','') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">Horaires (Français)</label>
+              <input type="text" name="horaires_fr" class="form-control"
+                     value="{{ settings.get('horaires_fr','') }}" placeholder="Lun–Sam : 09h–19h">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label">ساعات العمل (AR)</label>
+              <input type="text" name="horaires_ar" class="form-control" dir="rtl"
+                     style="font-family:'Cairo',sans-serif;"
+                     value="{{ settings.get('horaires_ar','') }}">
+            </div>
+            <div class="col-12">
+              <label class="admin-form-label">Code d'intégration Google Maps (iframe)</label>
+              <textarea name="google_maps_embed" class="form-control" rows="3"
+                        placeholder='&lt;iframe src="https://maps.google.com/..." width="100%" height="300"&gt;&lt;/iframe&gt;'>{{ settings.get('google_maps_embed','') }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Messages WhatsApp ── -->
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <i class="bi bi-whatsapp" style="color:#25d366;"></i> Messages WhatsApp
+        </div>
+        <div class="settings-section-body">
+          <p class="text-muted mb-3" style="font-size:0.85rem;">
+            Variables disponibles : <code>{nom}</code>, <code>{ref}</code>, <code>{prix}</code>, <code>{devise}</code>, <code>{url}</code>
+          </p>
+          <div class="mb-3">
+            <label class="admin-form-label">Message (Français)</label>
+            <textarea name="message_whatsapp_fr" class="form-control" rows="3">{{ settings.get('message_whatsapp_fr','Bonjour, je suis intéressé(e) par : {nom} — Réf: {ref} — Prix: {prix} {devise}. {url}') }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">الرسالة (العربية)</label>
+            <textarea name="message_whatsapp_ar" class="form-control" rows="3" dir="rtl"
+                      style="font-family:'Cairo',sans-serif;">{{ settings.get('message_whatsapp_ar','مرحباً، أنا مهتم بـ: {nom} — المرجع: {ref} — السعر: {prix} {devise}. {url}') }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── À propos ── -->
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <i class="bi bi-info-circle" style="color:var(--admin-primary);"></i> Texte "À propos"
+        </div>
+        <div class="settings-section-body">
+          <div class="mb-3">
+            <label class="admin-form-label">À propos (Français)</label>
+            <textarea name="a_propos_fr" class="form-control" rows="5">{{ settings.get('a_propos_fr','') }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">من نحن (Arabe)</label>
+            <textarea name="a_propos_ar" class="form-control" rows="5" dir="rtl"
+                      style="font-family:'Cairo',sans-serif;">{{ settings.get('a_propos_ar','') }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Réseaux sociaux ── -->
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <i class="bi bi-share" style="color:var(--admin-primary);"></i> Réseaux sociaux
+        </div>
+        <div class="settings-section-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="admin-form-label"><i class="bi bi-facebook me-1" style="color:#1877f2;"></i>Facebook URL</label>
+              <input type="url" name="facebook" class="form-control"
+                     value="{{ settings.get('facebook','') }}" placeholder="https://facebook.com/...">
+            </div>
+            <div class="col-md-6">
+              <label class="admin-form-label"><i class="bi bi-instagram me-1" style="color:#e1306c;"></i>Instagram URL</label>
+              <input type="url" name="instagram" class="form-control"
+                     value="{{ settings.get('instagram','') }}" placeholder="https://instagram.com/...">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT ── -->
+    <div class="col-lg-4">
+
+      <!-- Apparence -->
+      <div class="settings-section mb-3">
+        <div class="settings-section-header">
+          <i class="bi bi-palette" style="color:var(--admin-primary);"></i> Apparence
+        </div>
+        <div class="settings-section-body">
+          <div class="mb-3">
+            <label class="admin-form-label">Couleur primaire</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="colorPrimary" value="{{ settings.get('couleur_primaire','#1a237e') }}"
+                     oninput="document.getElementById('colorPrimaryText').value=this.value">
+              <input type="text" id="colorPrimaryText" name="couleur_primaire"
+                     value="{{ settings.get('couleur_primaire','#1a237e') }}"
+                     oninput="document.getElementById('colorPrimary').value=this.value">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">Couleur secondaire (accent)</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="colorSecondary" value="{{ settings.get('couleur_secondaire','#ff6b35') }}"
+                     oninput="document.getElementById('colorSecondaryText').value=this.value">
+              <input type="text" id="colorSecondaryText" name="couleur_secondaire"
+                     value="{{ settings.get('couleur_secondaire','#ff6b35') }}"
+                     oninput="document.getElementById('colorSecondary').value=this.value">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">Devise</label>
+            <select name="devise" class="form-select">
+              {% for code in ['DH','DA','TND','EUR','USD','MAD'] %}
+              <option value="{{ code }}" {{ 'selected' if settings.get('devise','DH') == code }}>{{ code }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="settings-section mb-3">
+        <div class="settings-section-header">
+          <i class="bi bi-toggles" style="color:var(--admin-primary);"></i> Options
+        </div>
+        <div class="settings-section-body">
+          <div class="mb-3">
+            <label class="admin-form-label">Seuil stock faible</label>
+            <div class="input-group">
+              <input type="number" name="seuil_stock_faible" class="form-control"
+                     value="{{ settings.get('seuil_stock_faible','5') }}" min="1">
+              <span class="input-group-text">unités</span>
+            </div>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   name="afficher_prix" id="afficherPrix"
+                   {{ 'checked' if settings.get('afficher_prix','1') == '1' }}>
+            <label class="form-check-label" for="afficherPrix">Afficher les prix</label>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   name="mode_maintenance" id="modeMaintenance"
+                   {{ 'checked' if settings.get('mode_maintenance','0') == '1' }}>
+            <label class="form-check-label text-danger" for="modeMaintenance">
+              <i class="bi bi-exclamation-triangle me-1"></i>Mode maintenance
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <button type="submit" class="btn-admin-primary w-100" style="padding:0.8rem;font-size:1rem;">
+        <i class="bi bi-check-circle me-2"></i>Enregistrer tous les paramètres
+      </button>
+    </div>
+  </div>
+</form>
+{% endblock %}

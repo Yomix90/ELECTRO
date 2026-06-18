@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}{{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }} — {{ t.get('page_home_title','Accueil') }}{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════ -->
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7 hero-content">
+        <div class="tag mb-3" style="background:rgba(255,107,53,0.2);color:var(--secondary);">
+          <i class="bi bi-lightning-fill"></i>
+          {% if lang == 'ar' %}متجر إلكترو أورديناتور{% else %}Boutique ELECTRO-ORDINATEUR{% endif %}
+        </div>
+        <h1 class="hero-title">
+          {{ settings.get('slogan_ar' if lang == 'ar' else 'slogan_fr', t.get('hero_title','Votre spécialiste')) }}
+          <span>{% if lang == 'ar' %}بأفضل الأسعار{% else %}au meilleur prix{% endif %}</span>
+        </h1>
+        <p class="hero-subtitle">{{ t.get('hero_subtitle','Laptops, PC Bureau, Composants & Accessoires') }}</p>
+        <div class="d-flex gap-3 flex-wrap">
+          <a href="{{ url_for('index') }}" class="btn-primary-custom" style="padding:0.75rem 1.8rem;font-size:1rem;">
+            <i class="bi bi-grid-fill"></i>{{ t.get('hero_cta','Explorer le catalogue') }}
+          </a>
+          {% if settings.get('whatsapp_principal') %}
+          <a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}"
+             target="_blank" class="btn-whatsapp" style="padding:0.75rem 1.5rem;font-size:1rem;">
+            <i class="bi bi-whatsapp"></i>WhatsApp
+          </a>
+          {% endif %}
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="stat-number">{{ products.total }}</div>
+            <div class="stat-label">{% if lang == 'ar' %}منتج{% else %}Produits{% endif %}</div>
+          </div>
+          <div class="hero-stat">
+            <div class="stat-number">{{ categories|length }}</div>
+            <div class="stat-label">{% if lang == 'ar' %}فئة{% else %}Catégories{% endif %}</div>
+          </div>
+          <div class="hero-stat">
+            <div class="stat-number">✓</div>
+            <div class="stat-label">{% if lang == 'ar' %}توصيل{% else %}Livraison{% endif %}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-5 d-none d-lg-block">
+        <div class="hero-visual">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:320px;margin:auto;">
+            {% for cat in categories[:4] %}
+            <a href="{{ url_for('category_view', slug=cat.slug) }}"
+               style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);
+                      border-radius:12px;padding:1rem;text-align:center;color:white;text-decoration:none;
+                      transition:all 0.25s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'"
+               onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+              <i class="bi {{ cat.icone }}" style="font-size:1.8rem;color:var(--secondary);display:block;margin-bottom:0.4rem;"></i>
+              <span style="font-size:0.8rem;font-weight:600;">{{ cat.nom(lang) }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     CATEGORIES
+══════════════════════════════════════════════════════════ -->
+<section style="padding:2rem 0 0;">
+  <div class="container">
+    <div class="row g-2 g-md-3">
+      {% for cat in categories %}
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+        <a href="{{ url_for('category_view', slug=cat.slug) }}" class="category-card">
+          <i class="bi {{ cat.icone }} cat-icon"></i>
+          <div class="cat-name">{{ cat.nom(lang) }}</div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     FEATURED PRODUCTS
+══════════════════════════════════════════════════════════ -->
+{% if featured %}
+<section class="section-padding">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-title">
+        <i class="bi bi-star-fill me-2" style="color:var(--secondary);font-size:1.2rem;"></i>
+        {{ t.get('featured_title','Produits Vedettes') }}
+      </h2>
+      <a href="{{ url_for('index') }}" class="btn-outline-custom btn-sm">
+        {% if lang == 'ar' %}عرض الكل{% else %}Voir tout{% endif %} <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+    <div class="row g-3">
+      {% for product in featured %}
+      <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+        {% include 'partials/product_card.html' %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     CATALOGUE + FILTRES
+══════════════════════════════════════════════════════════ -->
+<section style="padding-bottom:4rem;">
+  <div class="container">
+    <div class="row g-3">
+
+      <!-- ── SIDEBAR FILTRES ── -->
+      <div class="col-lg-3">
+        <div class="filters-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span style="font-weight:700;font-size:0.95rem;">
+              <i class="bi bi-funnel-fill me-2" style="color:var(--primary);"></i>
+              {{ t.get('filter_title','Filtres') }}
+            </span>
+            {% if current_cat or current_brand or current_etat or current_prix_min or in_stock_only %}
+            <a href="{{ url_for('index') }}" class="text-danger" style="font-size:0.78rem;font-weight:600;">
+              <i class="bi bi-x-circle me-1"></i>{% if lang == 'ar' %}مسح{% else %}Effacer{% endif %}
+            </a>
+            {% endif %}
+          </div>
+
+          <form action="{{ url_for('index') }}" method="get" id="filterForm">
+            <!-- Hidden sort to preserve -->
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+
+            <!-- Categories -->
+            <div class="mb-3">
+              <div class="filter-section-title">{{ t.get('filter_category','Catégorie') }}</div>
+              <div class="d-flex flex-wrap gap-1">
+                <a href="{{ url_for('index', sort=current_sort) }}" class="filter-chip {{ 'active' if not current_cat }}">
+                  {{ t.get('filter_all','Tous') }}
+                </a>
+                {% for cat in categories %}
+                <a href="{{ url_for('index', categorie=cat.slug, sort=current_sort) }}"
+                   class="filter-chip {{ 'active' if current_cat == cat.slug }}">
+                  {{ cat.nom(lang) }}
+                </a>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Brands -->
+            {% if brands %}
+            <div class="mb-3">
+              <div class="filter-section-title">{{ t.get('filter_brand','Marque') }}</div>
+              <select name="marque" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()">
+                <option value="">{{ t.get('filter_all','Toutes') }}</option>
+                {% for b in brands %}
+                <option value="{{ b }}" {{ 'selected' if current_brand == b }}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <!-- État -->
+            <div class="mb-3">
+              <div class="filter-section-title">{{ t.get('filter_condition','État') }}</div>
+              <div class="d-flex gap-1 flex-wrap">
+                <a href="{{ url_for('index', categorie=current_cat, marque=current_brand, sort=current_sort) }}"
+                   class="filter-chip {{ 'active' if not current_etat }}">{{ t.get('filter_all','Tous') }}</a>
+                <a href="{{ url_for('index', categorie=current_cat, marque=current_brand, etat='neuf', sort=current_sort) }}"
+                   class="filter-chip {{ 'active' if current_etat == 'neuf' }}">{{ t.get('filter_new','Neuf') }}</a>
+                <a href="{{ url_for('index', categorie=current_cat, marque=current_brand, etat='occasion', sort=current_sort) }}"
+                   class="filter-chip {{ 'active' if current_etat == 'occasion' }}">{{ t.get('filter_used','Occasion') }}</a>
+              </div>
+            </div>
+
+            <!-- In stock -->
+            <div class="mb-3">
+              <div class="filter-section-title">{{ t.get('filter_availability','Disponibilité') }}</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="in_stock" value="1" id="inStockCheck"
+                       {{ 'checked' if in_stock_only }} onchange="document.getElementById('filterForm').submit()">
+                <label class="form-check-label" for="inStockCheck" style="font-size:0.875rem;">
+                  {{ t.get('filter_in_stock','En stock uniquement') }}
+                </label>
+              </div>
+            </div>
+
+            <!-- Prix -->
+            <div class="mb-3">
+              <div class="filter-section-title">{{ t.get('filter_price','Prix (DH)') }}</div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input type="number" name="prix_min" class="form-control form-control-sm" placeholder="Min"
+                         value="{{ current_prix_min or '' }}" min="0">
+                </div>
+                <div class="col-6">
+                  <input type="number" name="prix_max" class="form-control form-control-sm" placeholder="Max"
+                         value="{{ current_prix_max or '' }}" min="0">
+                </div>
+              </div>
+              <button type="submit" class="btn-primary-custom btn-sm mt-2 w-100" style="justify-content:center;">
+                <i class="bi bi-search me-1"></i>{% if lang == 'ar' %}تطبيق{% else %}Appliquer{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── PRODUCTS GRID ── -->
+      <div class="col-lg-9">
+        <!-- Toolbar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div>
+            <h2 class="section-title" style="font-size:1.3rem;margin-bottom:0;padding-bottom:0;">
+              {{ t.get('all_products_title','Tous les produits') }}
+              <span style="font-size:0.9rem;font-weight:500;color:var(--text-muted);margin-left:0.5rem;">
+                ({{ products.total }})
+              </span>
+            </h2>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <span style="font-size:0.8rem;color:var(--text-muted);">{{ t.get('sort_by','Trier') }}:</span>
+            <div class="d-flex gap-1">
+              {% for sort_key, sort_label in [('newest', t.get('sort_newest','Nouveautés')), ('price_asc', t.get('sort_price_asc','Prix ↑')), ('price_desc', t.get('sort_price_desc','Prix ↓')), ('popular', t.get('sort_popular','Popularité'))] %}
+              <a href="{{ url_for('index', sort=sort_key, categorie=current_cat, marque=current_brand, etat=current_etat, in_stock=in_stock_only) }}"
+                 class="filter-chip {{ 'active' if current_sort == sort_key }}" style="font-size:0.75rem;">
+                {{ sort_label }}
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {% if products.items %}
+        <div class="row g-3" id="productsGrid">
+          {% for product in products.items %}
+          <div class="col-6 col-md-4 col-xl-3">
+            {% include 'partials/product_card.html' %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if products.pages > 1 %}
+        <nav class="mt-4">
+          <ul class="pagination justify-content-center">
+            {% if products.has_prev %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('index', page=products.prev_num, sort=current_sort, categorie=current_cat) }}">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% endif %}
+            {% for page_num in products.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=2) %}
+              {% if page_num %}
+              <li class="page-item {{ 'active' if page_num == products.page }}">
+                <a class="page-link" href="{{ url_for('index', page=page_num, sort=current_sort, categorie=current_cat) }}">{{ page_num }}</a>
+              </li>
+              {% else %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            {% if products.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('index', page=products.next_num, sort=current_sort, categorie=current_cat) }}">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-search" style="font-size:3rem;color:var(--text-light);"></i>
+          <h3 style="font-size:1.2rem;margin-top:1rem;color:var(--text-muted);">{{ t.get('no_results','Aucun produit trouvé.') }}</h3>
+          <p style="color:var(--text-light);">{{ t.get('no_results_hint','') }}</p>
+          <a href="{{ url_for('index') }}" class="btn-outline-custom mt-2">
+            <i class="bi bi-arrow-left me-1"></i>{% if lang == 'ar' %}العودة{% else %}Retour au catalogue{% endif %}
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

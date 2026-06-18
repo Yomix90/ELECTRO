@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ settings.get('slogan_fr', 'Votre spécialiste en informatique') }}">
+  <meta property="og:site_name" content="{{ settings.get('nom_boutique', 'ELECTRO-ORDINATEUR') }}">
+  <title>{% block title %}{{ settings.get('nom_boutique', 'ELECTRO-ORDINATEUR') }}{% endblock %}</title>
+
+  <!-- Bootstrap 5 -->
+  {% if is_rtl %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  {% else %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  {% endif %}
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- GLightbox -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% if is_rtl %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/rtl.css') }}">
+  {% endif %}
+
+  <!-- Dynamic theme colors -->
+  <style>
+    :root {
+      --primary: {{ settings.get('couleur_primaire', '#1a237e') }};
+      --secondary: {{ settings.get('couleur_secondaire', '#ff6b35') }};
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     FLASH MESSAGES
+══════════════════════════════════════════════════════════ -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages" id="flashMessages">
+  {% for category, message in messages %}
+  <div class="flash-alert alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'info' }} alert-dismissible" role="alert">
+    <i class="bi bi-{{ 'check-circle' if category == 'success' else 'x-circle' if category == 'danger' else 'exclamation-triangle' }}"></i>
+    {{ message }}
+    <button type="button" class="btn-close btn-close-sm ms-auto" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ══════════════════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════════════════════ -->
+<nav class="navbar-electro navbar navbar-expand-lg">
+  <div class="container">
+
+    <!-- Brand -->
+    <a class="navbar-brand" href="{{ url_for('index') }}">
+      {% if settings.get('logo') %}
+      <img src="{{ url_for('uploaded_file', filename=settings['logo']) }}" alt="Logo" height="36" style="object-fit:contain;">
+      {% else %}
+      <div class="brand-icon"><i class="bi bi-cpu-fill"></i></div>
+      {% endif %}
+      {{ settings.get('nom_boutique', 'ELECTRO-ORDINATEUR') }}
+    </a>
+
+    <!-- Search (desktop) -->
+    <form class="navbar-search d-none d-lg-block mx-3" action="{{ url_for('search') }}" method="get">
+      <i class="bi bi-search search-icon"></i>
+      <input type="text" name="q" placeholder="{{ t.get('search_placeholder', 'Rechercher...') }}" value="{{ request.args.get('q', '') }}">
+    </form>
+
+    <!-- Toggle -->
+    <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+      <i class="bi bi-list" style="font-size:1.4rem;"></i>
+    </button>
+
+    <!-- Links -->
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <ul class="navbar-nav me-auto ms-2 gap-1">
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">
+            <i class="bi bi-house me-1"></i>{{ t.get('nav_home', 'Accueil') }}
+          </a>
+        </li>
+        <!-- Categories dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-grid me-1"></i>{{ t.get('nav_categories', 'Catégories') }}
+          </a>
+          <ul class="dropdown-menu" style="background:var(--bg-card); border:1px solid var(--border);">
+            {% for cat in categories %}
+            <li>
+              <a class="dropdown-item" href="{{ url_for('category_view', slug=cat.slug) }}"
+                 style="color:var(--text); font-size:0.875rem;">
+                <i class="bi {{ cat.icone }} me-2" style="color:var(--primary);"></i>
+                {{ cat.nom(lang) }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint == 'about' }}" href="{{ url_for('about') }}">
+            {{ t.get('nav_about', 'À propos') }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint == 'contact' }}" href="{{ url_for('contact') }}">
+            {{ t.get('nav_contact', 'Contact') }}
+          </a>
+        </li>
+      </ul>
+
+      <!-- Search (mobile) -->
+      <form class="d-lg-none mb-2" action="{{ url_for('search') }}" method="get">
+        <div class="input-group">
+          <input type="text" class="form-control form-control-sm" name="q" placeholder="{{ t.get('search_placeholder', 'Rechercher...') }}">
+          <button class="btn btn-sm" type="submit" style="background:var(--secondary);color:white;">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- Right controls -->
+      <div class="d-flex align-items-center gap-2">
+        <!-- Language toggle -->
+        <div class="lang-toggle">
+          <a href="{{ url_for('set_lang', code='fr') }}" class="lang-btn {{ 'active' if lang == 'fr' }}">FR</a>
+          <a href="{{ url_for('set_lang', code='ar') }}" class="lang-btn {{ 'active' if lang == 'ar' }}">AR</a>
+        </div>
+
+        <!-- Theme toggle -->
+        <button class="theme-toggle-btn" id="themeToggle" title="{{ t.get('dark_mode', 'Mode sombre') }}">
+          <i class="bi bi-moon-fill" id="themeIcon"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════════════ -->
+{% block content %}{% endblock %}
+
+<!-- ══════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════════ -->
+<footer class="footer-electro">
+  <div class="container">
+    <div class="row g-4">
+      <!-- Brand -->
+      <div class="col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div class="brand-icon" style="width:36px;height:36px;background:linear-gradient(135deg,var(--secondary),#ff9100);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-cpu-fill" style="color:white;font-size:1rem;"></i>
+          </div>
+          <span style="font-weight:800;color:white;font-size:1.1rem;">{{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}</span>
+        </div>
+        <p style="font-size:0.875rem;color:rgba(255,255,255,0.5);margin-top:0.8rem;">
+          {{ settings.get('slogan_fr' if lang == 'fr' else 'slogan_ar', 'Votre spécialiste en informatique') }}
+        </p>
+        <div class="social-links">
+          {% if settings.get('facebook') %}
+          <a href="{{ settings['facebook'] }}" target="_blank" class="social-link"><i class="bi bi-facebook"></i></a>
+          {% endif %}
+          {% if settings.get('instagram') %}
+          <a href="{{ settings['instagram'] }}" target="_blank" class="social-link"><i class="bi bi-instagram"></i></a>
+          {% endif %}
+          {% if settings.get('whatsapp_principal') %}
+          <a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}" target="_blank" class="social-link"><i class="bi bi-whatsapp"></i></a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div class="col-lg-2 col-6">
+        <h5>{{ t.get('footer_categories', 'Catégories') }}</h5>
+        {% for cat in categories[:5] %}
+        <a href="{{ url_for('category_view', slug=cat.slug) }}">{{ cat.nom(lang) }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Contact -->
+      <div class="col-lg-3 col-6">
+        <h5>{{ t.get('footer_contact_us', 'Contactez-nous') }}</h5>
+        {% if settings.get('telephone') %}
+        <a href="tel:{{ settings['telephone'] }}"><i class="bi bi-telephone me-1"></i>{{ settings['telephone'] }}</a>
+        {% endif %}
+        {% if settings.get('email') %}
+        <a href="mailto:{{ settings['email'] }}"><i class="bi bi-envelope me-1"></i>{{ settings['email'] }}</a>
+        {% endif %}
+        {% if settings.get('whatsapp_principal') %}
+        <a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}" target="_blank">
+          <i class="bi bi-whatsapp me-1" style="color:#25d366;"></i>{{ settings['whatsapp_principal'] }}
+        </a>
+        {% endif %}
+        {% if settings.get('adresse_fr') %}
+        <a href="#"><i class="bi bi-geo-alt me-1"></i>{{ settings.get('adresse_ar' if lang == 'ar' else 'adresse_fr','') }}</a>
+        {% endif %}
+      </div>
+
+      <!-- Hours -->
+      <div class="col-lg-3">
+        <h5>{{ t.get('contact_hours', 'Horaires') }}</h5>
+        <p style="font-size:0.875rem;color:rgba(255,255,255,0.5);">
+          {{ settings.get('horaires_ar' if lang == 'ar' else 'horaires_fr', '') }}
+        </p>
+        <a href="{{ url_for('admin_login') }}" style="font-size:0.75rem;color:rgba(255,255,255,0.2);margin-top:1rem;display:block;">
+          <i class="bi bi-shield-lock me-1"></i>Admin
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-bottom d-flex justify-content-between flex-wrap gap-2">
+      <span>© {{ now.year }} {{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }} — {{ t.get('footer_rights','Tous droits réservés') }}</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOATING WHATSAPP BUTTON
+══════════════════════════════════════════════════════════ -->
+{% if settings.get('whatsapp_principal') %}
+<a href="https://wa.me/{{ settings['whatsapp_principal']|replace(' ','')|replace('+','') }}"
+   target="_blank" class="wa-float" title="{{ t.get('whatsapp_float_tooltip','Commander via WhatsApp') }}">
+  <i class="bi bi-whatsapp"></i>
+</a>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     MINI CART (WhatsApp Group)
+══════════════════════════════════════════════════════════ -->
+<div class="mini-cart" id="miniCart" onclick="openCartModal()">
+  <div class="cart-count" id="cartCount">0</div>
+  <span id="cartLabel">{{ t.get('cart_title','Sélection') }}</span>
+  <i class="bi bi-whatsapp" style="color:#25d366;margin-left:auto;"></i>
+</div>
+
+<!-- Cart Modal -->
+<div class="modal fade" id="cartModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cart3 me-2"></i>{{ t.get('cart_title','Sélection WhatsApp') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body cart-modal-body" id="cartItems">
+        <p class="text-center text-muted py-3">{{ t.get('cart_empty','Votre sélection est vide') }}</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-outline-danger me-auto" onclick="clearCart()">
+          <i class="bi bi-trash me-1"></i>{{ t.get('btn_clear_cart','Vider') }}
+        </button>
+        <button class="btn-whatsapp" id="cartSendBtn" style="display:none;" onclick="sendCartWA()">
+          <i class="bi bi-whatsapp"></i>{{ t.get('cart_send','Envoyer sur WhatsApp') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<!-- Pass data to JS -->
+<script>
+  window.ELECTRO = {
+    lang: '{{ lang }}',
+    isRtl: {{ 'true' if is_rtl else 'false' }},
+    waNumber: '{{ settings.get("whatsapp_principal","") | replace("+","") | replace(" ","") }}',
+    currency: '{{ settings.get("devise","DH") }}',
+    trackUrl: '{{ url_for("track_whatsapp", product_id=0) }}'.replace('/0', ''),
+    t: {
+      cart_items: {{ t.get('cart_items','article(s)')|tojson }},
+      btn_whatsapp_group: {{ t.get('btn_whatsapp_group','Ajouter')|tojson }},
+      no_results: {{ t.get('no_results','Aucun résultat')|tojson }},
+    }
+  };
+</script>
+
+{% block extra_scripts %}{% endblock %}
+
+<!-- Auto-dismiss flashes -->
+<script>
+  setTimeout(() => {
+    document.querySelectorAll('.flash-alert').forEach(el => {
+      const bsAlert = bootstrap.Alert.getOrCreateInstance(el);
+      bsAlert.close();
+    });
+  }, 5000);
+</script>
+
+</body>
+</html>

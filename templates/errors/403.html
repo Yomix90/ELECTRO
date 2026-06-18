@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}403 — Accès refusé{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:2rem;">
+  <div style="text-align:center;max-width:500px;">
+    <div style="font-size:6rem;font-weight:900;background:linear-gradient(135deg,#c62828,#ef9a9a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;">403</div>
+    <h1 style="font-size:1.5rem;margin:1rem 0 0.5rem;">Accès refusé</h1>
+    <p style="color:var(--text-muted);">Vous n'avez pas les permissions nécessaires pour accéder à cette page.</p>
+    <a href="{{ url_for('index') }}" class="btn-primary-custom mt-3" style="padding:0.75rem 2rem;">
+      <i class="bi bi-house me-2"></i>Retour à l'accueil
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Catégories — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-grid-3x3-gap me-2"></i>Gestion des catégories{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+  <!-- ── Create Form ── -->
+  <div class="col-lg-4">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-plus-circle me-2" style="color:var(--admin-primary);"></i>Nouvelle catégorie</h5>
+      </div>
+      <div class="admin-card-body">
+        <form method="post" action="{{ url_for('admin_categories') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="create">
+
+          <div class="mb-3">
+            <label class="admin-form-label form-required">Nom (Français)</label>
+            <input type="text" name="nom_fr" class="form-control" required placeholder="Ex: Laptops">
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">الاسم (العربية)</label>
+            <input type="text" name="nom_ar" class="form-control" dir="rtl"
+                   placeholder="مثال: أجهزة محمولة" style="font-family:'Cairo',sans-serif;">
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">Icône Bootstrap Icons</label>
+            <div class="input-group">
+              <span class="input-group-text" id="iconPreview">
+                <i class="bi bi-box" id="iconPreviewIcon"></i>
+              </span>
+              <input type="text" name="icone" id="iconeInput" class="form-control"
+                     value="bi-box" placeholder="bi-laptop, bi-cpu..."
+                     oninput="updateIconPreview(this.value)">
+            </div>
+            <small class="text-muted" style="font-size:0.75rem;">
+              Chercher sur <a href="https://icons.getbootstrap.com/" target="_blank">icons.getbootstrap.com</a>
+            </small>
+            <!-- Common icons quick-select -->
+            <div class="d-flex flex-wrap gap-1 mt-2">
+              {% for icon in ['bi-laptop','bi-pc-display','bi-cpu','bi-mouse','bi-printer','bi-headset','bi-recycle','bi-router','bi-phone','bi-keyboard','bi-camera','bi-controller','bi-hdd','bi-wifi','bi-power'] %}
+              <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.8rem;border:1px solid var(--admin-border);"
+                      onclick="setIcon('{{ icon }}')">
+                <i class="bi {{ icon }}"></i>
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="admin-form-label">Ordre d'affichage</label>
+            <input type="number" name="ordre" class="form-control" value="{{ (categories|length + 1) }}" min="1">
+          </div>
+          <button type="submit" class="btn-admin-primary w-100">
+            <i class="bi bi-plus-circle"></i> Créer la catégorie
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Categories List ── -->
+  <div class="col-lg-8">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5>{{ categories|length }} catégorie(s)</h5>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">Icône</th>
+              <th>Nom</th>
+              <th>Slug</th>
+              <th>Produits</th>
+              <th>Ordre</th>
+              <th>Active</th>
+              <th style="width:120px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat in categories %}
+            <tr>
+              <td>
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,rgba(26,35,126,0.1),rgba(26,35,126,0.05));border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                  <i class="bi {{ cat.icone }}" style="color:var(--admin-primary);font-size:1.1rem;"></i>
+                </div>
+              </td>
+              <td>
+                <div style="font-weight:600;font-size:0.875rem;">{{ cat.nom_fr }}</div>
+                <div style="font-size:0.78rem;color:var(--admin-text-muted);font-family:'Cairo',sans-serif;direction:rtl;text-align:right;">{{ cat.nom_ar }}</div>
+              </td>
+              <td><code style="font-size:0.78rem;background:rgba(26,35,126,0.06);padding:2px 6px;border-radius:4px;">{{ cat.slug }}</code></td>
+              <td>
+                <span class="tag">{{ cat_product_counts.get(cat.id, 0) }}</span>
+              </td>
+              <td style="font-size:0.85rem;">{{ cat.ordre }}</td>
+              <td>
+                {% if cat.active %}
+                <span class="status-badge status-visible"><i class="bi bi-check me-1"></i>Oui</span>
+                {% else %}
+                <span class="status-badge status-masque"><i class="bi bi-x me-1"></i>Non</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <!-- Edit modal trigger -->
+                  <button type="button" class="btn-sm-icon btn-edit"
+                          onclick="openEditModal({{ cat.id }}, '{{ cat.nom_fr|e }}', '{{ cat.nom_ar|e }}', '{{ cat.icone }}', {{ cat.ordre }}, {{ 'true' if cat.active else 'false' }})"
+                          title="Modifier">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <!-- Delete -->
+                  {% if cat_product_counts.get(cat.id, 0) == 0 %}
+                  <form method="post" style="display:inline;"
+                        onsubmit="return confirm('Supprimer {{ cat.nom_fr }} ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="cat_id" value="{{ cat.id }}">
+                    <button type="submit" class="btn-sm-icon btn-delete" title="Supprimer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                  {% else %}
+                  <span class="btn-sm-icon" style="opacity:0.3;cursor:not-allowed;" title="Impossible (produits liés)">
+                    <i class="bi bi-trash"></i>
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editCatModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Modifier la catégorie</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('admin_categories') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="cat_id" id="editCatId">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="admin-form-label">Nom (Français)</label>
+              <input type="text" name="nom_fr" id="editNomFr" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="admin-form-label">الاسم (AR)</label>
+              <input type="text" name="nom_ar" id="editNomAr" class="form-control" dir="rtl"
+                     style="font-family:'Cairo',sans-serif;">
+            </div>
+            <div class="col-8">
+              <label class="admin-form-label">Icône</label>
+              <input type="text" name="icone" id="editIcone" class="form-control">
+            </div>
+            <div class="col-4">
+              <label class="admin-form-label">Ordre</label>
+              <input type="number" name="ordre" id="editOrdre" class="form-control" min="1">
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="active" value="1" id="editActive">
+                <label class="form-check-label" for="editActive">Catégorie active</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn-admin-primary">
+            <i class="bi bi-check-circle me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function updateIconPreview(val) {
+    const el = document.getElementById('iconPreviewIcon');
+    if (el) { el.className = 'bi ' + val; }
+  }
+  function setIcon(icon) {
+    document.getElementById('iconeInput').value = icon;
+    updateIconPreview(icon);
+  }
+  function openEditModal(id, nomFr, nomAr, icone, ordre, active) {
+    document.getElementById('editCatId').value = id;
+    document.getElementById('editNomFr').value = nomFr;
+    document.getElementById('editNomAr').value = nomAr;
+    document.getElementById('editIcone').value = icone;
+    document.getElementById('editOrdre').value = ordre;
+    document.getElementById('editActive').checked = active;
+    new bootstrap.Modal(document.getElementById('editCatModal')).show();
+  }
+</script>
+{% endblock %}

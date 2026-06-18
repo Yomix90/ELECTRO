@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ t.get('page_about_title','À propos') }} — {{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}{% endblock %}
+{% block content %}
+<!-- Hero -->
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:4rem 0 3rem;color:white;text-align:center;">
+  <div class="container">
+    <div class="brand-icon" style="width:64px;height:64px;background:rgba(255,255,255,0.15);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+      <i class="bi bi-building" style="font-size:1.8rem;color:white;"></i>
+    </div>
+    <h1 style="font-weight:800;color:white;margin-bottom:0.5rem;">{{ t.get('about_title','À propos de nous') }}</h1>
+    <p style="color:rgba(255,255,255,0.6);">{{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}</p>
+  </div>
+</div>
+
+<div style="padding:4rem 0;background:var(--bg);">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-7">
+        <div class="admin-card" style="padding:2rem;">
+          <div class="divider-gradient mb-3"></div>
+          <div style="font-size:1rem;line-height:1.9;color:var(--text-muted);">
+            {{ settings.get('a_propos_ar' if lang=='ar' else 'a_propos_fr', '') | safe }}
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <!-- Values / Features -->
+        <div class="d-flex flex-column gap-3">
+          {% set values = [
+            ('bi-shield-check', 'Qualité garantie', 'جودة مضمونة', 'Produits certifiés et vérifiés avant vente', 'جميع المنتجات مُعتمدة ومُفحوصة قبل البيع'),
+            ('bi-truck', 'Livraison rapide', 'توصيل سريع', 'Livraison dans toute la région', 'التوصيل في جميع أنحاء المنطقة'),
+            ('bi-headset', 'Support client', 'دعم العملاء', 'Assistance technique après vente', 'دعم فني ما بعد البيع'),
+            ('bi-whatsapp', 'Contact direct', 'تواصل مباشر', 'Commandez facilement via WhatsApp', 'اطلب بسهولة عبر واتساب'),
+          ] %}
+          {% for icon, title_fr, title_ar, desc_fr, desc_ar in values %}
+          <div style="background:var(--bg-card);border-radius:var(--radius);padding:1.2rem;border:1px solid var(--border);display:flex;gap:1rem;align-items:flex-start;box-shadow:var(--shadow-sm);">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,rgba(26,35,126,0.1),rgba(26,35,126,0.05));border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi {{ icon }}" style="color:var(--primary);font-size:1.2rem;"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:0.95rem;color:var(--text);">{{ title_ar if lang=='ar' else title_fr }}</div>
+              <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px;">{{ desc_ar if lang=='ar' else desc_fr }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="text-center mt-5">
+      <p style="color:var(--text-muted);margin-bottom:1rem;">
+        {% if lang=='ar' %}هل أنت مستعد للشراء؟ تواصل معنا الآن{% else %}Prêt à commander ? Contactez-nous maintenant{% endif %}
+      </p>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{{ url_for('index') }}" class="btn-primary-custom" style="padding:0.75rem 1.8rem;">
+          <i class="bi bi-grid-fill"></i>{% if lang=='ar'%}تصفح المنتجات{% else %}Voir les produits{% endif %}
+        </a>
+        <a href="{{ url_for('contact') }}" class="btn-outline-custom" style="padding:0.75rem 1.8rem;">
+          <i class="bi bi-envelope"></i>{% if lang=='ar'%}اتصل بنا{% else %}Nous contacter{% endif %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

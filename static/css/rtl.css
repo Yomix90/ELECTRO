@@ -1,0 +1,121 @@
+/* ================================================================
+   RTL Overrides — Arabic Layout
+   Applied when <html dir="rtl"> is active
+   ================================================================ */
+
+[dir="rtl"] body {
+  font-family: 'Cairo', 'Inter', sans-serif;
+}
+
+/* Navbar */
+[dir="rtl"] .navbar-brand { flex-direction: row-reverse; }
+[dir="rtl"] .navbar-search { order: -1; }
+[dir="rtl"] .navbar-search .search-icon { left: auto; right: 12px; }
+[dir="rtl"] .navbar-search input { padding: 0.5rem 2.8rem 0.5rem 1.2rem; }
+
+/* Cards */
+[dir="rtl"] .product-card-price { flex-direction: row-reverse; justify-content: flex-end; }
+[dir="rtl"] .product-card-footer { flex-direction: row-reverse; }
+
+/* Section Title underline */
+[dir="rtl"] .section-title { text-align: right; }
+[dir="rtl"] .section-title::after { left: auto; right: 0; }
+
+/* Badges */
+[dir="rtl"] .badge-electro { left: auto; right: 10px; }
+
+/* Flash messages */
+[dir="rtl"] .flash-messages { right: auto; left: 16px; }
+[dir="rtl"] @keyframes slideInRight {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Floating WA */
+[dir="rtl"] .wa-float { right: auto; left: 24px; }
+[dir="rtl"] .mini-cart { left: auto; right: 90px; }
+
+/* Filters */
+[dir="rtl"] .filters-card { text-align: right; }
+
+/* Specs table */
+[dir="rtl"] .specs-table { direction: rtl; }
+[dir="rtl"] .specs-table td:first-child { text-align: right; }
+
+/* Bootstrap form rtl fixes */
+[dir="rtl"] .form-check { padding-left: 0; padding-right: 1.5rem; }
+[dir="rtl"] .form-check-input { float: right; margin-left: 0; margin-right: -1.5rem; }
+
+/* Pagination */
+[dir="rtl"] .pagination { flex-direction: row-reverse; }
+
+/* Footer */
+[dir="rtl"] .social-links { justify-content: flex-end; }
+[dir="rtl"] .footer-electro { text-align: right; }
+
+/* Hero */
+[dir="rtl"] .hero-section { text-align: right; }
+[dir="rtl"] .hero-stats { justify-content: flex-end; }
+
+/* Gallery thumbs */
+[dir="rtl"] .gallery-thumbs { flex-direction: row-reverse; }
+
+/* Contact */
+[dir="rtl"] .contact-icon-box { margin-left: 0; margin-right: 0; }
+
+/* Typography */
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3,
+[dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+  font-family: 'Cairo', sans-serif;
+}
+
+[dir="rtl"] .btn-primary-custom,
+[dir="rtl"] .btn-whatsapp,
+[dir="rtl"] .btn-outline-custom {
+  flex-direction: row-reverse;
+}
+
+/* Number alignment: keep LTR for prices */
+[dir="rtl"] .price-main,
+[dir="rtl"] .price-original,
+[dir="rtl"] .price-saving {
+  direction: ltr;
+}
+
+/* Mini-cart */
+[dir="rtl"] .cart-item { flex-direction: row-reverse; }
+[dir="rtl"] .cart-item-info { text-align: right; }
+
+/* Dropdown menus */
+[dir="rtl"] .dropdown-menu {
+  text-align: right;
+  left: auto;
+  right: 0;
+}
+
+/* Category card */
+[dir="rtl"] .category-card { text-align: center; }
+
+/* Input groups */
+[dir="rtl"] .input-group > :not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+[dir="rtl"] .input-group > :not(:last-child):not(.dropdown-toggle):not(.dropdown-menu) {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Breadcrumb */
+[dir="rtl"] .breadcrumb { flex-direction: row-reverse; }
+[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+  float: right;
+  padding-left: 0.5rem;
+  padding-right: 0;
+  content: "\\";
+}
+
+/* Bootstrap Icons mirroring for navigation arrows */
+[dir="rtl"] .bi-arrow-right::before { content: "\F12F"; }
+[dir="rtl"] .bi-arrow-left::before { content: "\F135"; }
+[dir="rtl"] .bi-chevron-right::before { content: "\F284"; }
+[dir="rtl"] .bi-chevron-left::before { content: "\F286"; }

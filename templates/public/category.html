@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ category.nom(lang) }} — {{ settings.get('nom_boutique','ELECTRO-ORDINATEUR') }}{% endblock %}
+{% block content %}
+<div style="padding:2rem 0 4rem;background:var(--bg);">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <nav aria-label="breadcrumb" style="font-size:0.85rem;">
+          <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}" style="color:var(--primary);">{% if lang == 'ar' %}الرئيسية{% else %}Accueil{% endif %}</a></li>
+            <li class="breadcrumb-item active">{{ category.nom(lang) }}</li>
+          </ol>
+        </nav>
+        <h1 class="section-title">
+          <i class="bi {{ category.icone }} me-2" style="color:var(--secondary);"></i>
+          {{ category.nom(lang) }}
+          <span style="font-size:0.9rem;font-weight:500;color:var(--text-muted);margin-left:0.5rem;">({{ products.total }})</span>
+        </h1>
+      </div>
+      <div class="d-flex gap-1 flex-wrap">
+        {% for sort_key, sort_label in [('newest','Nouveautés' if lang=='fr' else 'الأحدث'), ('price_asc','Prix ↑' if lang=='fr' else 'السعر ↑'), ('price_desc','Prix ↓' if lang=='fr' else 'السعر ↓')] %}
+        <a href="{{ url_for('category_view', slug=category.slug, sort=sort_key) }}"
+           class="filter-chip {{ 'active' if current_sort == sort_key }}" style="font-size:0.78rem;">{{ sort_label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if products.items %}
+    <div class="row g-3">
+      {% for product in products.items %}
+      <div class="col-6 col-md-4 col-lg-3">{% include 'partials/product_card.html' %}</div>
+      {% endfor %}
+    </div>
+    {% if products.pages > 1 %}
+    <nav class="mt-4"><ul class="pagination justify-content-center">
+      {% if products.has_prev %}<li class="page-item"><a class="page-link" href="{{ url_for('category_view', slug=category.slug, page=products.prev_num, sort=current_sort) }}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+      {% for p in products.iter_pages(left_edge=2,right_edge=2,left_current=1,right_current=2) %}
+        {% if p %}<li class="page-item {{ 'active' if p == products.page }}"><a class="page-link" href="{{ url_for('category_view', slug=category.slug, page=p, sort=current_sort) }}">{{ p }}</a></li>
+        {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+      {% endfor %}
+      {% if products.has_next %}<li class="page-item"><a class="page-link" href="{{ url_for('category_view', slug=category.slug, page=products.next_num, sort=current_sort) }}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-inbox" style="font-size:3rem;color:var(--text-light);"></i>
+      <p class="mt-2 text-muted">{{ t.get('no_results','Aucun produit dans cette catégorie.') }}</p>
+      <a href="{{ url_for('index') }}" class="btn-outline-custom mt-2">
+        <i class="bi bi-arrow-left me-1"></i>{% if lang=='ar'%}العودة{% else %}Retour{% endif %}
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
