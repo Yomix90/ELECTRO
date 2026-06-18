@@ -29,4 +29,4 @@ ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
 # Command to run the application using Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "120", "app:create_app()"]
+CMD ["sh", "-c", "python database/init_db.py && exec gunicorn --bind 0.0.0.0:5000 --workers 3 --timeout 120 'app:create_app()'"]
