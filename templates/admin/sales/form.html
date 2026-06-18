@@ -1,0 +1,296 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Nouvelle Vente — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-cart-plus me-2"></i>Saisir une nouvelle vente{% endblock %}
+
+{% block extra_head %}
+<style>
+  .product-row {
+    background: var(--admin-content-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .product-row .btn-remove {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+  }
+  .stock-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-12">
+    <form method="post" enctype="multipart/form-data" id="saleForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <!-- Client & Sale Info -->
+        <div class="col-md-4">
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5><i class="bi bi-person me-2"></i>Informations Client</h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="mb-3">
+                <label class="form-label" for="nom_client">Nom complet du client <span class="text-danger">*</span></label>
+                <input type="text" name="nom_client" id="nom_client" class="form-control form-control-sm" required placeholder="Ex: Mohamed Alami">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="telephone_client">Téléphone</label>
+                <input type="text" name="telephone_client" id="telephone_client" class="form-control form-control-sm" placeholder="Ex: +212661000000">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="adresse_client">Adresse de livraison</label>
+                <textarea name="adresse_client" id="adresse_client" class="form-control form-control-sm" rows="3" placeholder="Ex: Appt 4, Immeuble B, Casablanca"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="date_vente">Date de vente</label>
+                <input type="datetime-local" name="date_vente" id="date_vente" class="form-control form-control-sm" value="{{ now.strftime('%Y-%m-%dT%H:%M') }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="commentaire">Commentaire / Notes de commande</label>
+                <textarea name="commentaire" id="commentaire" class="form-control form-control-sm" rows="2" placeholder="Notes internes..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Items Selection -->
+        <div class="col-md-8">
+          <div class="admin-card mb-4">
+            <div class="admin-card-header d-flex justify-content-between align-items-center">
+              <h5><i class="bi bi-box-seam me-2"></i>Articles Vendus</h5>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="add-item-btn">
+                <i class="bi bi-plus-circle me-1"></i>Ajouter un article
+              </button>
+            </div>
+            <div class="admin-card-body">
+              <div id="items-container">
+                <!-- Dynamic items added here -->
+              </div>
+              
+              <div class="d-flex justify-content-end align-items-center mt-3 pt-3 border-top">
+                <h4 class="mb-0 me-3">Total :</h4>
+                <h3 class="mb-0 text-primary fw-bold" id="grand-total">0.00 DH</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Initial Payment Info -->
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5><i class="bi bi-credit-card me-2"></i>Paiement Initial</h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" for="montant_paye">Montant payé initialement (DH)</label>
+                  <input type="number" name="montant_paye" id="montant_paye" class="form-control form-control-sm" value="0" min="0" step="any">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" for="mode_paiement">Mode de paiement</label>
+                  <select name="mode_paiement" id="mode_paiement" class="form-select form-select-sm">
+                    <option value="Espèces">Espèces</option>
+                    <option value="Virement Bancaire">Virement Bancaire</option>
+                    <option value="Versement Bancaire">Versement Bancaire</option>
+                    <option value="Chèque">Chèque</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" for="reference_paiement">Référence de paiement (N° transaction...)</label>
+                  <input type="text" name="reference_paiement" id="reference_paiement" class="form-control form-control-sm" placeholder="Ex: VR-84729">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" for="preuve_paiement">Preuve de paiement (Screenshot, PDF...)</label>
+                  <input type="file" name="preuve_paiement" id="preuve_paiement" class="form-control form-control-sm" accept="image/*,.pdf">
+                  <div class="form-text">Formats acceptés : JPG, PNG, WEBP, PDF (Max 5 Mo).</div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="notes_paiement">Notes de paiement</label>
+                  <input type="text" name="notes_paiement" id="notes_paiement" class="form-control form-control-sm" placeholder="Remarques éventuelles sur ce paiement...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{{ url_for('admin_sales') }}" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn-admin-primary">Enregistrer la vente</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Inject product list as JSON
+  const products = {{ products_json|safe }};
+  let rowCounter = 0;
+
+  document.addEventListener("DOMContentLoaded", function() {
+    // Add first item row automatically
+    addItemRow();
+
+    // Event listener for adding items
+    document.getElementById("add-item-btn").addEventListener("click", addItemRow);
+
+    // Form validation
+    document.getElementById("saleForm").addEventListener("submit", function(e) {
+      const rows = document.querySelectorAll(".product-row");
+      if (rows.length === 0) {
+        alert("Veuillez ajouter au moins un article.");
+        e.preventDefault();
+        return;
+      }
+
+      let valid = true;
+      rows.forEach(row => {
+        const select = row.querySelector(".product-select");
+        if (!select.value) {
+          alert("Veuillez sélectionner un produit dans chaque ligne.");
+          valid = false;
+        }
+
+        const qty = parseInt(row.querySelector(".qty-input").value) || 0;
+        const maxStock = parseInt(row.querySelector(".qty-input").max) || 0;
+        if (qty <= 0) {
+          alert("La quantité doit être supérieure à 0.");
+          valid = false;
+        }
+      });
+
+      if (!valid) {
+        e.preventDefault();
+      }
+    });
+  });
+
+  function addItemRow() {
+    rowCounter++;
+    const container = document.getElementById("items-container");
+    
+    let optionsHtml = '<option value="">-- Sélectionner un produit --</option>';
+    products.forEach(p => {
+      optionsHtml += `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}" data-ref="${p.ref}">[${p.ref}] ${p.name} (Stock: ${p.stock})</option>`;
+    });
+
+    const rowHtml = `
+      <div class="product-row" id="row-${rowCounter}">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-remove" onclick="removeItemRow(${rowCounter})" title="Supprimer">
+          <i class="bi bi-trash"></i>
+        </button>
+        <div class="row">
+          <div class="col-md-6 mb-2">
+            <label class="form-label small fw-bold">Produit</label>
+            <select name="items[${rowCounter}][product_id]" class="form-select form-select-sm product-select" onchange="onProductSelect(${rowCounter}, this)" required>
+              ${optionsHtml}
+            </select>
+          </div>
+          <div class="col-md-2 mb-2">
+            <label class="form-label small fw-bold">Prix Unitaire (DH)</label>
+            <input type="number" name="items[${rowCounter}][prix_unitaire]" class="form-control form-control-sm price-input" step="any" min="0" oninput="calculateRowTotal(${rowCounter})" required>
+          </div>
+          <div class="col-md-2 mb-2">
+            <label class="form-label small fw-bold">Quantité</label>
+            <input type="number" name="items[${rowCounter}][quantite]" class="form-control form-control-sm qty-input" value="1" min="1" oninput="calculateRowTotal(${rowCounter})" required>
+            <div class="mt-1">
+              <span class="badge bg-secondary-subtle text-secondary stock-badge" id="stock-badge-${rowCounter}">Stock: —</span>
+            </div>
+          </div>
+          <div class="col-md-2 mb-2">
+            <label class="form-label small fw-bold">Sous-total (DH)</label>
+            <input type="text" class="form-control form-control-sm subtotal-input" value="0.00" readonly style="background-color:#eee;">
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML("beforeend", rowHtml);
+  }
+
+  function removeItemRow(id) {
+    const row = document.getElementById(`row-${id}`);
+    if (row) {
+      row.remove();
+      updateGrandTotal();
+    }
+  }
+
+  function onProductSelect(rowId, select) {
+    const selectedOption = select.options[select.selectedIndex];
+    const row = document.getElementById(`row-${rowId}`);
+    
+    if (selectedOption.value) {
+      const price = parseFloat(selectedOption.getAttribute("data-price")) || 0;
+      const stock = parseInt(selectedOption.getAttribute("data-stock")) || 0;
+      
+      const priceInput = row.querySelector(".price-input");
+      const qtyInput = row.querySelector(".qty-input");
+      const stockBadge = document.getElementById(`stock-badge-${rowId}`);
+
+      priceInput.value = price;
+      qtyInput.max = stock;
+      
+      if (stock === 0) {
+        stockBadge.className = "badge bg-danger-subtle text-danger stock-badge";
+        stockBadge.innerText = "Rupture de stock";
+        alert("Attention: Ce produit est en rupture de stock !");
+      } else if (stock <= 5) {
+        stockBadge.className = "badge bg-warning-subtle text-warning stock-badge";
+        stockBadge.innerText = `Stock faible: ${stock}`;
+      } else {
+        stockBadge.className = "badge bg-success-subtle text-success stock-badge";
+        stockBadge.innerText = `Stock: ${stock}`;
+      }
+
+      calculateRowTotal(rowId);
+    } else {
+      row.querySelector(".price-input").value = "";
+      row.querySelector(".qty-input").max = "";
+      document.getElementById(`stock-badge-${rowId}`).className = "badge bg-secondary-subtle text-secondary stock-badge";
+      document.getElementById(`stock-badge-${rowId}`).innerText = "Stock: —";
+      row.querySelector(".subtotal-input").value = "0.00";
+      updateGrandTotal();
+    }
+  }
+
+  function calculateRowTotal(rowId) {
+    const row = document.getElementById(`row-${rowId}`);
+    if (!row) return;
+
+    const price = parseFloat(row.querySelector(".price-input").value) || 0;
+    const qty = parseInt(row.querySelector(".qty-input").value) || 0;
+    
+    const subtotal = price * qty;
+    row.querySelector(".subtotal-input").value = subtotal.toFixed(2);
+    
+    updateGrandTotal();
+  }
+
+  function updateGrandTotal() {
+    let grandTotal = 0;
+    document.querySelectorAll(".subtotal-input").forEach(input => {
+      grandTotal += parseFloat(input.value) || 0;
+    });
+
+    document.getElementById("grand-total").innerText = grandTotal.toLocaleString("fr-FR", { minimumFractionDigits: 2 }) + " DH";
+    
+    // Suggest payment total matching if user wants full payment
+    const paymentInput = document.getElementById("montant_paye");
+    if (paymentInput.value > 0 && parseFloat(paymentInput.value) > grandTotal) {
+      paymentInput.value = grandTotal;
+    }
+  }
+</script>
+{% endblock %}

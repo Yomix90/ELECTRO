@@ -203,3 +203,62 @@ class WhatsAppClick(db.Model):
     produit_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=True)
     date_heure = db.Column(db.DateTime, default=datetime.utcnow)
     lang = db.Column(db.String(5), default="fr")
+
+
+class Sale(db.Model):
+    __tablename__ = "sales"
+    id = db.Column(db.Integer, primary_key=True)
+    reference = db.Column(db.String(50), unique=True, nullable=False)
+    date_vente = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    nom_client = db.Column(db.String(100), nullable=False)
+    telephone_client = db.Column(db.String(50), nullable=True)
+    adresse_client = db.Column(db.Text, nullable=True)
+    statut = db.Column(db.String(20), default="complete")  # complete, en_attente, annule
+    montant_total = db.Column(db.Float, nullable=False, default=0.0)
+    montant_paye = db.Column(db.Float, nullable=False, default=0.0)
+    statut_paiement = db.Column(db.String(20), default="non_paye")  # non_paye, partiellement_paye, paye
+    commentaire = db.Column(db.Text, nullable=True)
+
+    items = db.relationship("SaleItem", backref="sale", lazy="dynamic", cascade="all, delete-orphan")
+    payments = db.relationship("Payment", backref="sale", lazy="dynamic", cascade="all, delete-orphan")
+
+    @property
+    def reste_a_payer(self):
+        return max(0.0, self.montant_total - self.montant_paye)
+
+    def recalculate_totals(self):
+        self.montant_total = sum(item.sous_total for item in self.items)
+        self.montant_paye = sum(payment.montant for payment in self.payments)
+        if self.montant_paye <= 0:
+            self.statut_paiement = "non_paye"
+        elif self.montant_paye >= self.montant_total:
+            self.statut_paiement = "paye"
+        else:
+            self.statut_paiement = "partiellement_paye"
+
+
+class SaleItem(db.Model):
+    __tablename__ = "sale_items"
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"), nullable=False)
+    produit_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=True)
+    reference_produit = db.Column(db.String(50), nullable=False)
+    nom_produit = db.Column(db.String(200), nullable=False)
+    quantite = db.Column(db.Integer, nullable=False, default=1)
+    prix_unitaire = db.Column(db.Float, nullable=False)
+    sous_total = db.Column(db.Float, nullable=False)
+
+    produit = db.relationship("Product", backref="sale_items")
+
+
+class Payment(db.Model):
+    __tablename__ = "payments"
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"), nullable=False)
+    date_paiement = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    montant = db.Column(db.Float, nullable=False)
+    mode_paiement = db.Column(db.String(50), nullable=False)  # Espèces, Virement, Versement, Autre
+    reference_paiement = db.Column(db.String(100), nullable=True)
+    preuve_paiement = db.Column(db.String(255), nullable=True)  # File path
+    notes = db.Column(db.Text, nullable=True)
+

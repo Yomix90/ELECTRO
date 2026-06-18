@@ -77,3 +77,41 @@ def get_thumbnail_path(relative_path: str) -> str:
     if not relative_path:
         return ""
     return relative_path.replace("products/", "products/thumbs/")
+
+
+def save_payment_proof(file_storage, sale_ref: str) -> Optional[str]:
+    """
+    Saves an uploaded payment proof (image or PDF):
+    - Validates extension
+    - Generates a unique filename
+    - Saves it in 'static/uploads/payments/'
+    Returns the relative path stored in DB (e.g. 'payments/proof_VNT-0001_uuid.jpg')
+    or None on failure.
+    """
+    if not file_storage:
+        return None
+
+    filename = file_storage.filename
+    if not filename or "." not in filename:
+        return None
+
+    ext = filename.rsplit(".", 1)[1].lower()
+    if ext not in {"jpg", "jpeg", "png", "webp", "gif", "pdf"}:
+        return None
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    payments_dir = os.path.join(upload_dir, "payments")
+    os.makedirs(payments_dir, exist_ok=True)
+
+    uid = uuid.uuid4().hex[:8]
+    clean_ref = "".join(c for c in sale_ref if c.isalnum() or c in "-_").strip()
+    new_filename = f"proof_{clean_ref}_{uid}.{ext}"
+    filepath = os.path.join(payments_dir, new_filename)
+
+    try:
+        file_storage.save(filepath)
+        return f"payments/{new_filename}"
+    except Exception as e:
+        current_app.logger.error(f"Payment proof save error: {e}")
+        return None
+

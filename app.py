@@ -22,8 +22,8 @@ import openpyxl
 from io import BytesIO
 
 from config import config
-from database.models import db, Product, Category, ProductImage, SiteSettings, Admin, ActivityLog, WhatsAppClick
-from utils.image_handler import save_product_image, delete_product_image
+from database.models import db, Product, Category, ProductImage, SiteSettings, Admin, ActivityLog, WhatsAppClick, Sale, SaleItem, Payment
+from utils.image_handler import save_product_image, delete_product_image, save_payment_proof
 from utils.helpers import (
     get_lang, load_translations, build_whatsapp_url,
     build_whatsapp_group_url, format_price, slugify, log_action
@@ -368,6 +368,12 @@ def create_app(config_name: str = None) -> Flask:
         recent_logs = ActivityLog.query.order_by(ActivityLog.date_heure.desc()).limit(10).all()
         total_categories = Category.query.count()
 
+        # Sales KPIs
+        total_sales = Sale.query.count()
+        sales_turnover = db.session.query(db.func.sum(Sale.montant_total)).filter(Sale.statut != "annule").scalar() or 0.0
+        total_encaisse = db.session.query(db.func.sum(Sale.montant_paye)).filter(Sale.statut != "annule").scalar() or 0.0
+        total_creances = max(0.0, sales_turnover - total_encaisse)
+
         return render_template(
             "admin/dashboard.html",
             total_products=total_products,
@@ -382,6 +388,10 @@ def create_app(config_name: str = None) -> Flask:
             chart_wa=json.dumps(chart_wa),
             recent_logs=recent_logs,
             total_categories=total_categories,
+            total_sales=total_sales,
+            sales_turnover=sales_turnover,
+            total_encaisse=total_encaisse,
+            total_creances=total_creances,
         )
 
     # ──────────────────────────────────────────
@@ -830,6 +840,317 @@ def create_app(config_name: str = None) -> Flask:
             flash(f"Erreur lors de l'import : {e}", "danger")
 
         return redirect(url_for("admin_products"))
+
+    # ──────────────────────────────────────────
+    #  Sales Management (Ventes WhatsApp)
+    # ──────────────────────────────────────────
+    @app.route("/admin/ventes")
+    @login_required
+    def admin_sales():
+        page = request.args.get("page", 1, type=int)
+        search = request.args.get("q", "").strip()
+        statut_paiement = request.args.get("statut_paiement", "")
+        statut = request.args.get("statut", "")
+
+        query = Sale.query
+
+        if search:
+            query = query.filter(
+                db.or_(
+                    Sale.nom_client.ilike(f"%{search}%"),
+                    Sale.reference.ilike(f"%{search}%"),
+                    Sale.telephone_client.ilike(f"%{search}%"),
+                )
+            )
+        if statut_paiement:
+            query = query.filter_by(statut_paiement=statut_paiement)
+        if statut:
+            query = query.filter_by(statut=statut)
+
+        sales = query.order_by(Sale.date_vente.desc()).paginate(
+            page=page, per_page=20, error_out=False
+        )
+
+        return render_template(
+            "admin/sales/list.html",
+            sales=sales,
+            search=search,
+            current_payment_status=statut_paiement,
+            current_status=statut,
+        )
+
+    @app.route("/admin/ventes/nouvelle", methods=["GET", "POST"])
+    @login_required
+    def admin_sale_new():
+        if not current_user.can_edit:
+            abort(403)
+        
+        products = Product.query.order_by(Product.reference).all()
+        products_list = []
+        for p in products:
+            products_list.append({
+                "id": p.id,
+                "ref": p.reference,
+                "name": p.nom_fr,
+                "price": p.prix_actuel,
+                "stock": p.quantite_stock
+            })
+        
+        products_json = json.dumps(products_list, ensure_ascii=False)
+
+        if request.method == "POST":
+            try:
+                nom_client = request.form.get("nom_client", "").strip()
+                telephone_client = request.form.get("telephone_client", "").strip()
+                adresse_client = request.form.get("adresse_client", "").strip()
+                commentaire = request.form.get("commentaire", "").strip()
+                
+                date_vente_str = request.form.get("date_vente")
+                if date_vente_str:
+                    date_vente = datetime.strptime(date_vente_str, "%Y-%m-%dT%H:%M")
+                else:
+                    date_vente = datetime.utcnow()
+
+                today_str = datetime.utcnow().strftime("%Y%m%d")
+                last_sale = Sale.query.filter(Sale.reference.like(f"VNT-{today_str}-%")).order_by(Sale.id.desc()).first()
+                if last_sale:
+                    last_num = int(last_sale.reference.split("-")[-1])
+                    new_num = last_num + 1
+                else:
+                    new_num = 1
+                reference = f"VNT-{today_str}-{new_num:04d}"
+
+                sale = Sale(
+                    reference=reference,
+                    date_vente=date_vente,
+                    nom_client=nom_client,
+                    telephone_client=telephone_client,
+                    adresse_client=adresse_client,
+                    commentaire=commentaire,
+                    statut="complete",
+                    montant_total=0.0,
+                    montant_paye=0.0,
+                    statut_paiement="non_paye"
+                )
+                db.session.add(sale)
+                db.session.flush()
+
+                total_amount = 0.0
+                item_indices = set()
+                for key in request.form.keys():
+                    if key.startswith("items[") and "]" in key:
+                        idx = key.split("]")[0].split("[")[1]
+                        item_indices.add(idx)
+
+                for idx in item_indices:
+                    p_id = request.form.get(f"items[{idx}][product_id]", type=int)
+                    qty = request.form.get(f"items[{idx}][quantite]", type=int)
+                    unit_price = request.form.get(f"items[{idx}][prix_unitaire]", type=float)
+
+                    if p_id and qty and unit_price is not None:
+                        prod = Product.query.get(p_id)
+                        if prod:
+                            sub_total = qty * unit_price
+                            total_amount += sub_total
+                            
+                            sale_item = SaleItem(
+                                sale_id=sale.id,
+                                produit_id=prod.id,
+                                reference_produit=prod.reference,
+                                nom_produit=prod.nom_fr,
+                                quantite=qty,
+                                prix_unitaire=unit_price,
+                                sous_total=sub_total
+                            )
+                            db.session.add(sale_item)
+                            
+                            prod.quantite_stock = max(0, prod.quantite_stock - qty)
+                            log_action(db, current_user.id, "stock_decrement", f"Stock de {prod.reference} décrémenté de {qty} (Vente {reference})")
+
+                sale.montant_total = total_amount
+
+                initial_pay = request.form.get("montant_paye", 0.0, type=float)
+                if initial_pay > 0:
+                    mode = request.form.get("mode_paiement", "Espèces")
+                    ref_pay = request.form.get("reference_paiement", "").strip()
+                    notes_pay = request.form.get("notes_paiement", "").strip()
+                    
+                    preuve_file = request.files.get("preuve_paiement")
+                    preuve_path = None
+                    if preuve_file and preuve_file.filename:
+                        preuve_path = save_payment_proof(preuve_file, reference)
+
+                    payment = Payment(
+                        sale_id=sale.id,
+                        date_paiement=date_vente,
+                        montant=initial_pay,
+                        mode_paiement=mode,
+                        reference_paiement=ref_pay,
+                        preuve_paiement=preuve_path,
+                        notes=notes_pay
+                    )
+                    db.session.add(payment)
+                    db.session.flush()
+                
+                sale.recalculate_totals()
+                
+                log_action(db, current_user.id, "create_sale", f"Vente {reference} créée pour client {nom_client} d'un total de {total_amount} DH")
+                db.session.commit()
+                flash(f"Vente '{reference}' enregistrée avec succès !", "success")
+                return redirect(url_for("admin_sales"))
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Erreur lors de la création de la vente : {e}", "danger")
+
+        return render_template("admin/sales/form.html", products_json=products_json)
+
+    @app.route("/admin/ventes/<int:sale_id>", methods=["GET", "POST"])
+    @login_required
+    def admin_sale_detail(sale_id):
+        sale = Sale.query.get_or_404(sale_id)
+
+        if request.method == "POST":
+            if not current_user.can_edit:
+                abort(403)
+            try:
+                montant = request.form.get("montant", type=float)
+                if not montant or montant <= 0:
+                    flash("Le montant du paiement doit être supérieur à 0.", "danger")
+                elif montant > sale.reste_a_payer:
+                    flash(f"Le montant ne peut pas dépasser le reste à payer ({sale.reste_a_payer} DH).", "danger")
+                else:
+                    mode = request.form.get("mode_paiement", "Espèces")
+                    ref_pay = request.form.get("reference_paiement", "").strip()
+                    notes = request.form.get("notes", "").strip()
+                    
+                    preuve_file = request.files.get("preuve_paiement")
+                    preuve_path = None
+                    if preuve_file and preuve_file.filename:
+                        preuve_path = save_payment_proof(preuve_file, sale.reference)
+
+                    payment = Payment(
+                        sale_id=sale.id,
+                        date_paiement=datetime.utcnow(),
+                        montant=montant,
+                        mode_paiement=mode,
+                        reference_paiement=ref_pay,
+                        preuve_paiement=preuve_path,
+                        notes=notes
+                    )
+                    db.session.add(payment)
+                    db.session.flush()
+                    
+                    sale.recalculate_totals()
+                    
+                    log_action(db, current_user.id, "add_payment", f"Paiement de {montant} DH ajouté pour la vente {sale.reference}")
+                    db.session.commit()
+                    flash(f"Paiement de {montant} DH enregistré.", "success")
+                    return redirect(url_for("admin_sale_detail", sale_id=sale.id))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Erreur lors de l'enregistrement du paiement : {e}", "danger")
+
+        return render_template("admin/sales/detail.html", sale=sale)
+
+    @app.route("/admin/ventes/<int:sale_id>/status", methods=["POST"])
+    @login_required
+    def admin_sale_status(sale_id):
+        if not current_user.can_edit:
+            abort(403)
+        sale = Sale.query.get_or_404(sale_id)
+        old_status = sale.statut
+        new_status = request.form.get("statut", "").strip()
+
+        if new_status in ["complete", "en_attente", "annule"] and new_status != old_status:
+            try:
+                if new_status == "annule":
+                    for item in sale.items:
+                        if item.produit:
+                            item.produit.quantite_stock += item.quantite
+                            log_action(db, current_user.id, "stock_increment", f"Stock de {item.reference_produit} incrémenté de {item.quantite} (Vente {sale.reference} Annulée)")
+                elif old_status == "annule":
+                    for item in sale.items:
+                        if item.produit:
+                            item.produit.quantite_stock = max(0, item.produit.quantite_stock - item.quantite)
+                            log_action(db, current_user.id, "stock_decrement", f"Stock de {item.reference_produit} décrémenté de {item.quantite} (Vente {sale.reference} Réactivée)")
+
+                sale.statut = new_status
+                log_action(db, current_user.id, "update_sale_status", f"Statut de la vente {sale.reference} changé de {old_status} à {new_status}")
+                db.session.commit()
+                flash("Statut de la vente mis à jour.", "success")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Erreur lors de la mise à jour du statut : {e}", "danger")
+
+        return redirect(url_for("admin_sale_detail", sale_id=sale.id))
+
+    @app.route("/admin/ventes/<int:sale_id>/paiement/<int:payment_id>/supprimer", methods=["POST"])
+    @login_required
+    def admin_payment_delete(sale_id, payment_id):
+        if not current_user.can_edit:
+            abort(403)
+        sale = Sale.query.get_or_404(sale_id)
+        payment = Payment.query.filter_by(id=payment_id, sale_id=sale_id).first_or_404()
+
+        try:
+            if payment.preuve_paiement:
+                upload_dir = current_app.config["UPLOAD_FOLDER"]
+                file_path = os.path.join(upload_dir, payment.preuve_paiement)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception as ex:
+                        current_app.logger.warning(f"Could not delete proof file {file_path}: {ex}")
+
+            montant = payment.montant
+            db.session.delete(payment)
+            db.session.flush()
+            
+            sale.recalculate_totals()
+            
+            log_action(db, current_user.id, "delete_payment", f"Paiement de {montant} DH supprimé pour la vente {sale.reference}")
+            db.session.commit()
+            flash("Paiement supprimé avec succès.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de la suppression du paiement : {e}", "danger")
+
+        return redirect(url_for("admin_sale_detail", sale_id=sale.id))
+
+    @app.route("/admin/ventes/<int:sale_id>/supprimer", methods=["POST"])
+    @login_required
+    def admin_sale_delete(sale_id):
+        if not current_user.can_edit:
+            abort(403)
+        sale = Sale.query.get_or_404(sale_id)
+
+        try:
+            if sale.statut != "annule":
+                for item in sale.items:
+                    if item.produit:
+                        item.produit.quantite_stock += item.quantite
+                        log_action(db, current_user.id, "stock_increment", f"Stock de {item.reference_produit} incrémenté de {item.quantite} (Vente {sale.reference} Supprimée)")
+
+            for payment in sale.payments:
+                if payment.preuve_paiement:
+                    upload_dir = current_app.config["UPLOAD_FOLDER"]
+                    file_path = os.path.join(upload_dir, payment.preuve_paiement)
+                    if os.path.exists(file_path):
+                        try:
+                            os.remove(file_path)
+                        except Exception as ex:
+                            current_app.logger.warning(f"Could not delete proof file {file_path}: {ex}")
+
+            ref = sale.reference
+            db.session.delete(sale)
+            db.session.commit()
+            flash(f"Vente '{ref}' supprimée.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de la suppression de la vente : {e}", "danger")
+
+        return redirect(url_for("admin_sales"))
 
     # ──────────────────────────────────────────
     #  Internal helper: save product from form

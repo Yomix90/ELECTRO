@@ -1,0 +1,167 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Ventes — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-cart-check me-2"></i>Gestion des ventes{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="admin-card mb-3">
+  <div class="admin-card-body">
+    <div class="d-flex gap-2 flex-wrap justify-content-between align-items-center">
+      <!-- Search form -->
+      <form class="d-flex gap-2 flex-wrap align-items-center" method="get">
+        <div class="input-group" style="max-width:260px;">
+          <input type="text" name="q" class="form-control form-control-sm" placeholder="Client, téléphone, référence..."
+                 value="{{ search }}">
+          <button class="btn btn-sm" type="submit" style="background:var(--admin-primary);color:white;">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+        <select name="statut_paiement" class="form-select form-select-sm" style="max-width:180px;" onchange="this.form.submit()">
+          <option value="">Tous les paiements</option>
+          <option value="non_paye" {{ 'selected' if current_payment_status == 'non_paye' }}>Non payé</option>
+          <option value="partiellement_paye" {{ 'selected' if current_payment_status == 'partiellement_paye' }}>Partiellement payé</option>
+          <option value="paye" {{ 'selected' if current_payment_status == 'paye' }}>Entièrement payé</option>
+        </select>
+        <select name="statut" class="form-select form-select-sm" style="max-width:150px;" onchange="this.form.submit()">
+          <option value="">Tous les statuts</option>
+          <option value="complete" {{ 'selected' if current_status == 'complete' }}>Confirmée / Livrée</option>
+          <option value="en_attente" {{ 'selected' if current_status == 'en_attente' }}>En attente</option>
+          <option value="annule" {{ 'selected' if current_status == 'annule' }}>Annulée</option>
+        </select>
+        {% if search or current_payment_status or current_status %}
+        <a href="{{ url_for('admin_sales') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x me-1"></i>Effacer
+        </a>
+        {% endif %}
+      </form>
+
+      <div>
+        <a href="{{ url_for('admin_sale_new') }}" class="btn-admin-primary">
+          <i class="bi bi-plus-circle"></i> Saisir une vente
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sales Table -->
+<div class="admin-card">
+  <div class="admin-card-header">
+    <h5>{{ sales.total }} vente(s)</h5>
+    <small style="color:var(--admin-text-muted);">Page {{ sales.page }} / {{ sales.pages }}</small>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Réf Vente</th>
+          <th>Date</th>
+          <th>Client</th>
+          <th>Montant Total</th>
+          <th>Montant Payé</th>
+          <th>Reste</th>
+          <th>Paiement</th>
+          <th>Statut</th>
+          <th style="width:120px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sales.items %}
+        <tr class="{{ 'table-danger' if s.statut == 'annule' else '' }}">
+          <!-- Ref -->
+          <td>
+            <a href="{{ url_for('admin_sale_detail', sale_id=s.id) }}" style="font-weight:600; text-decoration:none;">
+              {{ s.reference }}
+            </a>
+          </td>
+          <!-- Date -->
+          <td style="font-size:0.85rem;">{{ s.date_vente.strftime('%d/%m/%Y %H:%M') }}</td>
+          <!-- Client -->
+          <td>
+            <div style="font-weight:600;font-size:0.875rem;">{{ s.nom_client }}</div>
+            {% if s.telephone_client %}
+            <div style="font-size:0.75rem;color:var(--admin-text-muted);">
+              <i class="bi bi-phone"></i> {{ s.telephone_client }}
+            </div>
+            {% endif %}
+          </td>
+          <!-- Montant Total -->
+          <td style="font-weight:600;">{{ format_price(s.montant_total) }}</td>
+          <!-- Montant Paye -->
+          <td class="text-success">{{ format_price(s.montant_paye) }}</td>
+          <!-- Reste -->
+          <td class="{{ 'text-danger fw-bold' if s.reste_a_payer > 0 else 'text-muted' }}">
+            {{ format_price(s.reste_a_payer) }}
+          </td>
+          <!-- Statut Paiement -->
+          <td>
+            {% if s.statut_paiement == 'paye' %}
+            <span class="badge bg-success text-white px-2 py-1 rounded" style="font-size:0.75rem;">Payé</span>
+            {% elif s.statut_paiement == 'partiellement_paye' %}
+            <span class="badge bg-warning text-dark px-2 py-1 rounded" style="font-size:0.75rem;">Partiel</span>
+            {% else %}
+            <span class="badge bg-danger text-white px-2 py-1 rounded" style="font-size:0.75rem;">Non payé</span>
+            {% endif %}
+          </td>
+          <!-- Statut Vente -->
+          <td>
+            {% if s.statut == 'complete' %}
+            <span class="badge bg-primary text-white px-2 py-1 rounded" style="font-size:0.75rem;">Confirmée</span>
+            {% elif s.statut == 'en_attente' %}
+            <span class="badge bg-secondary text-white px-2 py-1 rounded" style="font-size:0.75rem;">En attente</span>
+            {% else %}
+            <span class="badge bg-dark text-white px-2 py-1 rounded" style="font-size:0.75rem;">Annulée</span>
+            {% endif %}
+          </td>
+          <!-- Actions -->
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('admin_sale_detail', sale_id=s.id) }}"
+                 class="btn-sm-icon btn-edit" title="Détails & Paiements">
+                <i class="bi bi-eye"></i>
+              </a>
+              <form method="post" action="{{ url_for('admin_sale_delete', sale_id=s.id) }}" style="display:inline;"
+                    onsubmit="return confirm('Supprimer définitivement la vente {{ s.reference }} ? Cette action recréditera le stock si la vente est active.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm-icon btn-delete" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center py-4 text-muted">
+            <i class="bi bi-info-circle me-1"></i> Aucune vente enregistrée.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if sales.pages > 1 %}
+  <div class="p-3 border-top">
+    <nav><ul class="pagination pagination-sm justify-content-center mb-0">
+      {% if sales.has_prev %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_sales', page=sales.prev_num, q=search, statut_paiement=current_payment_status, statut=current_status) }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for pn in sales.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=2) %}
+        {% if pn %}
+        <li class="page-item {{ 'active' if pn == sales.page }}">
+          <a class="page-link" href="{{ url_for('admin_sales', page=pn, q=search, statut_paiement=current_payment_status, statut=current_status) }}">{{ pn }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if sales.has_next %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('admin_sales', page=sales.next_num, q=search, statut_paiement=current_payment_status, statut=current_status) }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

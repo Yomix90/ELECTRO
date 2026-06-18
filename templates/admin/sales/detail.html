@@ -1,0 +1,329 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Détail Vente {{ sale.reference }} — Admin{% endblock %}
+{% block header_title %}<i class="bi bi-receipt me-2"></i>Vente {{ sale.reference }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .payment-proof-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--admin-border);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .payment-proof-thumb:hover {
+    transform: scale(1.1);
+  }
+  .proof-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #495057;
+    text-decoration: none;
+    border: 1px solid var(--admin-border);
+  }
+  .proof-placeholder:hover {
+    background: #dee2e6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Left Column: Details & Items -->
+  <div class="col-lg-8">
+    <!-- Sale Financial & General Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card border-0 bg-light p-3 text-center rounded-3">
+          <div class="text-muted small">Total Vente</div>
+          <h4 class="fw-bold mt-1 mb-0">{{ format_price(sale.montant_total) }}</h4>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 bg-success-subtle text-success p-3 text-center rounded-3">
+          <div class="small">Montant Payé</div>
+          <h4 class="fw-bold mt-1 mb-0">{{ format_price(sale.montant_paye) }}</h4>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 {{ 'bg-danger-subtle text-danger' if sale.reste_a_payer > 0 else 'bg-light text-muted' }} p-3 text-center rounded-3">
+          <div class="small">Reste à Payer</div>
+          <h4 class="fw-bold mt-1 mb-0">{{ format_price(sale.reste_a_payer) }}</h4>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 bg-light p-3 text-center rounded-3">
+          <div class="text-muted small">Statut Vente</div>
+          <div class="mt-2">
+            {% if sale.statut == 'complete' %}
+            <span class="badge bg-primary text-white">Confirmée</span>
+            {% elif sale.statut == 'en_attente' %}
+            <span class="badge bg-warning text-dark">En attente</span>
+            {% else %}
+            <span class="badge bg-dark text-white">Annulée</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sale Info & Client -->
+    <div class="admin-card mb-4">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-person-lines-fill me-2"></i>Détails du client & livraison</h5>
+      </div>
+      <div class="admin-card-body">
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            <div class="text-muted small">Nom du client :</div>
+            <div class="fw-bold fs-5">{{ sale.nom_client }}</div>
+          </div>
+          <div class="col-sm-6 mb-3">
+            <div class="text-muted small">Téléphone :</div>
+            <div class="fw-bold fs-5">
+              {% if sale.telephone_client %}
+              <a href="tel:{{ sale.telephone_client }}" class="text-decoration-none"><i class="bi bi-telephone"></i> {{ sale.telephone_client }}</a>
+              <a href="https://wa.me/{{ sale.telephone_client.replace(' ', '').replace('+', '') }}" target="_blank" class="btn btn-sm btn-outline-success ms-2 py-0"><i class="bi bi-whatsapp"></i> Chat</a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-sm-6 mb-3">
+            <div class="text-muted small">Date de vente :</div>
+            <div>{{ sale.date_vente.strftime('%d/%m/%Y à %H:%M') }}</div>
+          </div>
+          <div class="col-sm-6 mb-3">
+            <div class="text-muted small">Statut de paiement :</div>
+            <div class="mt-1">
+              {% if sale.statut_paiement == 'paye' %}
+              <span class="badge bg-success">Payé en totalité</span>
+              {% elif sale.statut_paiement == 'partiellement_paye' %}
+              <span class="badge bg-warning text-dark">Partiellement payé</span>
+              {% else %}
+              <span class="badge bg-danger">Non payé</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="text-muted small">Adresse de livraison :</div>
+            <div class="bg-light p-2 rounded mt-1">{{ sale.adresse_client or 'Aucune adresse spécifiée.' }}</div>
+          </div>
+          {% if sale.commentaire %}
+          <div class="col-12 mt-3">
+            <div class="text-muted small">Commentaire de commande :</div>
+            <div class="border-start border-3 border-secondary ps-2 py-1 mt-1 font-monospace">{{ sale.commentaire }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Sold Table -->
+    <div class="admin-card mb-4">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-box-seam me-2"></i>Articles Commandés</h5>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Référence</th>
+              <th>Article</th>
+              <th>Prix Unitaire</th>
+              <th>Quantité</th>
+              <th class="text-end">Sous-total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in sale.items %}
+            <tr>
+              <td><code>{{ item.reference_produit }}</code></td>
+              <td>
+                {% if item.produit %}
+                <a href="{{ url_for('admin_product_edit', product_id=item.produit.id) }}" style="font-weight:600; text-decoration:none;">
+                  {{ item.nom_produit }}
+                </a>
+                {% else %}
+                <span class="text-muted">{{ item.nom_produit }} (Produit supprimé)</span>
+                {% endif %}
+              </td>
+              <td>{{ format_price(item.prix_unitaire) }}</td>
+              <td>{{ item.quantite }}</td>
+              <td class="text-end fw-bold">{{ format_price(item.sous_total) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="border-top-2">
+              <td colspan="4" class="text-end fw-bold py-3">Total :</td>
+              <td class="text-end text-primary fw-bold fs-5 py-3">{{ format_price(sale.montant_total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Status Change & Payment History -->
+  <div class="col-lg-4">
+    <!-- Statut Update -->
+    <div class="admin-card mb-4">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-arrow-repeat me-2"></i>Mettre à jour le statut</h5>
+      </div>
+      <div class="admin-card-body">
+        <form method="post" action="{{ url_for('admin_sale_status', sale_id=sale.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <select name="statut" class="form-select form-select-sm">
+              <option value="en_attente" {{ 'selected' if sale.statut == 'en_attente' }}>En attente</option>
+              <option value="complete" {{ 'selected' if sale.statut == 'complete' }}>Confirmée / Livrée</option>
+              <option value="annule" {{ 'selected' if sale.statut == 'annule' }}>Annulée (Recréditer stock)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary w-100">Enregistrer le statut</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Payment Form -->
+    <div class="admin-card mb-4">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-plus-circle-fill me-2"></i>Enregistrer un paiement</h5>
+      </div>
+      <div class="admin-card-body">
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Montant à régler (DH) <span class="text-danger">*</span></label>
+            <input type="number" name="montant" class="form-control form-control-sm" value="{{ sale.reste_a_payer }}" max="{{ sale.reste_a_payer }}" min="1" step="any" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Mode de paiement</label>
+            <select name="mode_paiement" class="form-select form-select-sm">
+              <option value="Espèces">Espèces</option>
+              <option value="Virement Bancaire">Virement Bancaire</option>
+              <option value="Versement Bancaire">Versement Bancaire</option>
+              <option value="Chèque">Chèque</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Référence transaction (N° virement...)</label>
+            <input type="text" name="reference_paiement" class="form-control form-control-sm" placeholder="Optionnel">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Preuve de paiement (image/pdf)</label>
+            <input type="file" name="preuve_paiement" class="form-control form-control-sm" accept="image/*,.pdf">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Notes</label>
+            <input type="text" name="notes" class="form-control form-control-sm" placeholder="Commentaire... (optionnel)">
+          </div>
+          <button type="submit" class="btn btn-sm btn-success w-100" {{ 'disabled' if sale.reste_a_payer <= 0 }}>
+            <i class="bi bi-check-circle me-1"></i>Enregistrer le paiement
+          </button>
+          {% if sale.reste_a_payer <= 0 %}
+          <div class="form-text text-center text-success mt-1"><i class="bi bi-check-all"></i> Vente entièrement payée.</div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Full Width: Payment History -->
+  <div class="col-12">
+    <div class="admin-card mb-4">
+      <div class="admin-card-header">
+        <h5><i class="bi bi-wallet2 me-2"></i>Historique des paiements</h5>
+      </div>
+      <div class="admin-card-body">
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Date Paiement</th>
+                <th>Montant Réglé</th>
+                <th>Mode</th>
+                <th>Référence</th>
+                <th>Preuve de paiement</th>
+                <th>Notes</th>
+                <th style="width:90px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pay in sale.payments %}
+              <tr>
+                <td>{{ pay.date_paiement.strftime('%d/%m/%Y à %H:%M') }}</td>
+                <td class="fw-bold text-success">{{ format_price(pay.montant) }}</td>
+                <td>{{ pay.mode_paiement }}</td>
+                <td><code>{{ pay.reference_paiement or '—' }}</code></td>
+                <td>
+                  {% if pay.preuve_paiement %}
+                    {% if pay.preuve_paiement.endswith('.pdf') %}
+                      <a href="{{ url_for('uploaded_file', filename=pay.preuve_paiement) }}" target="_blank" class="proof-placeholder" title="Voir le PDF">
+                        <i class="bi bi-file-earmark-pdf fs-4 text-danger"></i>
+                      </a>
+                    {% else %}
+                      <img src="{{ url_for('uploaded_file', filename=pay.preuve_paiement) }}" class="payment-proof-thumb" 
+                           onclick="showImageModal('{{ url_for('uploaded_file', filename=pay.preuve_paiement) }}')" 
+                           title="Agrandir l'image">
+                    {% endif %}
+                  {% else %}
+                    <span class="text-muted">Aucune preuve</span>
+                  {% endif %}
+                </td>
+                <td style="font-size:0.85rem;">{{ pay.notes or '—' }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('admin_payment_delete', sale_id=sale.id, payment_id=pay.id) }}" 
+                        onsubmit="return confirm('Voulez-vous supprimer ce paiement d\'un montant de {{ pay.montant }} DH ? Cela réajustera le statut de paiement de la vente.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer le paiement">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center py-3 text-muted">
+                  <i class="bi bi-info-circle"></i> Aucun paiement enregistré pour le moment.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:transparent; border:none;">
+      <div class="modal-body text-center p-0 position-relative">
+        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <img id="modalImageSrc" src="" style="max-width:100%; max-height:85vh; border-radius:8px; border:2px solid white;">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function showImageModal(src) {
+    document.getElementById('modalImageSrc').src = src;
+    const myModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    myModal.show();
+  }
+</script>
+{% endblock %}

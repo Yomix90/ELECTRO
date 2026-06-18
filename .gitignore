@@ -37,6 +37,14 @@ static/uploads/products/*
 static/uploads/products/thumbs/*
 !static/uploads/products/.gitkeep
 !static/uploads/products/thumbs/.gitkeep
+static/uploads/payments/*
+!static/uploads/payments/.gitkeep
+static/uploads/*.webp
+static/uploads/*.png
+static/uploads/*.jpg
+static/uploads/*.jpeg
+static/uploads/*.gif
+static/uploads/*.pdf
 
 # OS generated files
 .DS_Store

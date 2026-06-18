@@ -44,6 +44,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a href="{{ url_for('admin_sales') }}" class="nav-link {{ 'active' if 'sale' in request.endpoint }}">
+            <i class="bi bi-cart-check"></i> Ventes (WhatsApp)
+          </a>
+        </li>
+        <li class="nav-item">
           <a href="{{ url_for('admin_categories') }}" class="nav-link {{ 'active' if request.endpoint == 'admin_categories' }}">
             <i class="bi bi-grid-3x3-gap"></i> Catégories
           </a>
