@@ -9,7 +9,7 @@ import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import create_app
-from database.models import db, Admin, Category, Product, ProductImage, SiteSettings
+from database.models import db, Admin, Category, Product, ProductImage, SiteSettings, Sale, SaleItem, Payment
 
 app = create_app()
 

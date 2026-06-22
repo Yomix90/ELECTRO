@@ -17,7 +17,7 @@ COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories for uploads and db
-RUN mkdir -p /app/database
+RUN mkdir -p /app/instance
 RUN mkdir -p /app/static/uploads/products/thumbs
 
 # Make port 5000 available to the world outside this container
